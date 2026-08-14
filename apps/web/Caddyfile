@@ -1,0 +1,23 @@
+# Hozircha domensiz (VPS IP orqali) — HTTP, avtomatik TLS yo'q.
+# Real domen bo'lganda (bo'lim 12 dala ishidan keyin) buni almashtiring:
+#
+#   clinic1.misol-domen.uz {
+#     encode gzip
+#     handle /api/* { reverse_proxy api:3000 }
+#     handle { root * /srv; try_files {path} /index.html; file_server }
+#   }
+#
+# — shunda Caddy Let's Encrypt orqali TLS'ni O'ZI, avtomatik oladi.
+:80 {
+  encode gzip
+
+  handle /api/* {
+    reverse_proxy api:3000
+  }
+
+  handle {
+    root * /srv
+    try_files {path} /index.html
+    file_server
+  }
+}

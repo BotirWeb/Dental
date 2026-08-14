@@ -1,0 +1,60 @@
+# DIQQAT: bu fayl ushbu ishlab chiqish muhitida (Docker daemon mavjud emas)
+# sinovdan o'tkazilmagan — VPS'ga deploy qilishdan oldin tekshirib chiqing.
+#
+# Ishga tushirish:
+#   cp .env.example .env          # DB_PASSWORD'ni o'zgartiring
+#   docker compose up -d --build
+#   docker compose run --rm api pnpm db:migrate
+#   docker compose run --rm api pnpm db:seed     # faqat birinchi marta / dev uchun
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: dental_app
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?docker-compose uchun .env faylida DB_PASSWORD kerak}
+      POSTGRES_DB: dental
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dental_app -d dental"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - apps/api/.env
+    environment:
+      # env_file'dagi DATABASE_URL'ni (lokal dev uchun localhost'ga
+      # mo'ljallangan) konteyner ichki tarmog'iga moslab qayta yozadi —
+      # Docker Compose'da `environment` har doim `env_file`dan ustun turadi.
+      DATABASE_URL: postgres://dental_app:${DB_PASSWORD:?}@db:5432/dental
+      NODE_ENV: production
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - api
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  db_data:
+  caddy_data:
+  caddy_config:

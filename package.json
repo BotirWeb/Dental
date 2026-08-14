@@ -1,0 +1,20 @@
+{
+  "name": "dental-web",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Stomatologiya klinikalari uchun web tizim — Faza 1 skeleton",
+  "packageManager": "pnpm@10.28.0",
+  "scripts": {
+    "dev:api": "pnpm --filter @dental/api dev",
+    "dev:web": "pnpm --filter @dental/web dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "db:generate": "pnpm --filter @dental/api db:generate",
+    "db:migrate": "pnpm --filter @dental/api db:migrate",
+    "db:seed": "pnpm --filter @dental/api db:seed"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["argon2", "esbuild"]
+  }
+}
