@@ -15,6 +15,27 @@
       "when": 1790057175973,
       "tag": "0001_friendly_pestilence",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790067952572,
+      "tag": "0002_t2_clinic_slug_login_unique",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790070783873,
+      "tag": "0003_t3_session_last_activity",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790071319669,
+      "tag": "0004_t4_idempotency_keys",
+      "breakpoints": true
     }
   ]
 }

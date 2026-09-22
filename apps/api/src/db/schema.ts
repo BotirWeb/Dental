@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
   pgEnum,
@@ -11,6 +12,8 @@ import {
   jsonb,
   uniqueIndex,
   index,
+  check,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 import {
   USER_ROLES,
@@ -56,19 +59,35 @@ export const auditActionEnum = pgEnum("audit_action", ["create", "update", "dele
 // clinics
 // ---------------------------------------------------------------------------
 
-export const clinics = pgTable("clinics", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  name: text("name").notNull(),
-  timezone: text("timezone").notNull().default("Asia/Tashkent"),
-  /** Sozlanadigan: shifokor foizi qanday hisoblanadi. Bo'lim 13 ochiq savol
-   * javobi topilguncha default = "gross". */
-  doctorPctBasis: doctorPctBasisEnum("doctor_pct_basis").notNull().default("gross"),
-  createdAt: createdAtCol(),
-});
+export const clinics = pgTable(
+  "clinics",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    /**
+     * Login ekranidagi "Klinika kodi" — tahlil C4 / T2. Bitta shifokor bir
+     * nechta klinikada ishlashi mumkin, login esa faqat klinika ICHIDA
+     * noyob (users.login pastga qarang) — shuning uchun kirishda avval
+     * klinika slug'i kerak. Format: 3-32 belgi, kichik lotin harf/raqam/tire.
+     */
+    slug: text("slug").notNull(),
+    timezone: text("timezone").notNull().default("Asia/Tashkent"),
+    /** Sozlanadigan: shifokor foizi qanday hisoblanadi. Bo'lim 13 ochiq savol
+     * javobi topilguncha default = "gross". */
+    doctorPctBasis: doctorPctBasisEnum("doctor_pct_basis").notNull().default("gross"),
+    createdAt: createdAtCol(),
+  },
+  (t) => ({
+    slugUnique: uniqueIndex("clinics_slug_unique").on(t.slug),
+    slugFormat: check("clinics_slug_format", sql`${t.slug} ~ '^[a-z0-9-]{3,32}$'`),
+  }),
+);
 
 // ---------------------------------------------------------------------------
-// users — auth. login GLOBAL noyob (login ekranida klinika tanlanmaydi,
-// bo'lim 6 ekran-1: faqat "login + parol").
+// users — auth. login klinika ICHIDA noyob (tahlil C4 / T2). Login ekranida
+// avval klinika slug'i tanlanadi (clinics.slug), keyin shu klinika ichidagi
+// login. Global unique EMAS ataylab: bitta shifokor ikki klinikada ishlashi
+// mumkin, va har klinikada o'z "admin"i bo'lishi kerak.
 // ---------------------------------------------------------------------------
 
 export const users = pgTable(
@@ -76,6 +95,7 @@ export const users = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     clinicId: uuid("clinic_id").notNull().references(() => clinics.id),
+    /** Saqlashda doim trim + lowercase (routes/auth.ts) — solishtirish katta/kichik harfga sezgir bo'lmasin. */
     login: text("login").notNull(),
     passwordHash: text("password_hash").notNull(),
     fullName: text("full_name").notNull(),
@@ -85,7 +105,13 @@ export const users = pgTable(
     deletedAt: deletedAtCol(),
   },
   (t) => ({
-    loginUnique: uniqueIndex("users_login_unique").on(t.login),
+    /**
+     * `WHERE deleted_at IS NULL` — o'chirilgan foydalanuvchining logini
+     * yangi foydalanuvchiga berish mumkin bo'lishi uchun (T2 qabul mezoni).
+     */
+    loginUnique: uniqueIndex("users_login_unique")
+      .on(t.clinicId, t.login)
+      .where(sql`${t.deletedAt} IS NULL`),
     clinicIdx: index("users_clinic_idx").on(t.clinicId),
   }),
 );
@@ -98,7 +124,14 @@ export const users = pgTable(
 export const sessions = pgTable("sessions", {
   id: text("id").primaryKey(), // xavfsiz tasodifiy token, ko'ring src/api/auth/session.ts
   userId: uuid("user_id").notNull().references(() => users.id),
+  /** Absolyut chegara — yaratilishda belgilanadi, SESSION_MAX_DAYS (T3). */
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  /**
+   * Idle (harakatsizlik) muddati shundan hisoblanadi — SESSION_IDLE_HOURS
+   * (T3, tahlil D2). Har so'rovda EMAS, ≥5 daqiqada bir yangilanadi
+   * (src/api/auth/session.ts) — DB yozuv yukini kamaytirish uchun.
+   */
+  lastActivityAt: timestamp("last_activity_at", { withTimezone: true }).notNull().defaultNow(),
   createdAt: createdAtCol(),
 });
 
@@ -468,5 +501,38 @@ export const auditLog = pgTable(
   (t) => ({
     clinicIdx: index("audit_log_clinic_idx").on(t.clinicId),
     entityIdx: index("audit_log_entity_idx").on(t.entity, t.entityId),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// idempotency_keys — tizim jadvali. T4 (tahlil M1, birinchi qism): sekin
+// internetda admin tugmani ikki marta bossa yoki so'rov timeout'dan keyin
+// qayta yuborilsa — ikki marta to'lov/bemor yaratilmasin.
+//
+// status_code/response_body NULLABLE — "band qilish" (claim) naqshi uchun:
+// handler ishga tushishidan OLDIN shu (clinic_id, key) bilan bo'sh qator
+// yoziladi (UNIQUE cheklov orqali PARALLEL ikkita so'rovdan faqat bittasi
+// yoza oladi — shu bilan ikkalasi ham handler'ni bajarib, DUPLIKAT yozuv
+// yaratib qo'yishining oldi olinadi). Handler tugagach, shu qatorga haqiqiy
+// javob yoziladi. Ko'ring: src/api/middleware/idempotency.ts.
+// ---------------------------------------------------------------------------
+
+export const idempotencyKeys = pgTable(
+  "idempotency_keys",
+  {
+    clinicId: uuid("clinic_id").notNull().references(() => clinics.id),
+    /** `Idempotency-Key` header qiymati (UUID) — mijoz tomonidan yaratiladi. */
+    key: text("key").notNull(),
+    /** So'rov tanasining xeshi — bir xil kalit, boshqa tana holatini aniqlash uchun. */
+    requestHash: text("request_hash").notNull(),
+    /** NULL = hali bajarilmoqda (band qilingan, lekin tugallanmagan). */
+    statusCode: integer("status_code"),
+    responseBody: text("response_body"),
+    createdAt: createdAtCol(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.clinicId, t.key] }),
+    /** 48 soatdan eski kalitlarni tozalash uchun (T4). */
+    createdAtIdx: index("idempotency_keys_created_at_idx").on(t.createdAt),
   }),
 );

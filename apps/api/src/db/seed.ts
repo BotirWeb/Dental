@@ -11,7 +11,7 @@ import { toMoneyInput, toPercentInput } from "./columns";
 async function main() {
   const [clinic] = await db
     .insert(clinics)
-    .values({ name: "Namuna Klinika", timezone: "Asia/Tashkent" })
+    .values({ name: "Namuna Klinika", slug: "namuna-klinika", timezone: "Asia/Tashkent" })
     .returning();
 
   const credentials = [
@@ -66,6 +66,7 @@ async function main() {
   });
 
   console.log("Seed muvaffaqiyatli qo'llandi. Kirish uchun:");
+  console.log(`  klinika kodi: ${clinic.slug}`);
   for (const cred of credentials) {
     console.log(`  ${cred.role.padEnd(8)} login: ${cred.login.padEnd(8)} parol: ${cred.password}`);
   }
