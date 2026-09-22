@@ -8,6 +8,13 @@
       "when": 1786729402729,
       "tag": "0000_wild_sphinx",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790057175973,
+      "tag": "0001_friendly_pestilence",
+      "breakpoints": true
     }
   ]
 }

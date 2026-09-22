@@ -8,6 +8,7 @@ import { users } from "../../db/schema";
 import { verifyPassword } from "../auth/password";
 import { createSession, deleteSession } from "../auth/session";
 import { requireAuth, SESSION_COOKIE_NAME } from "../middleware/auth";
+import { clientIp, rateLimit } from "../middleware/rateLimit";
 import type { AppVariables } from "../context";
 
 export const authRoutes = new Hono<{ Variables: AppVariables }>();
@@ -15,8 +16,30 @@ export const authRoutes = new Hono<{ Variables: AppVariables }>();
 const isProd = process.env.NODE_ENV === "production";
 const cookieSecure = (process.env.SESSION_COOKIE_SECURE ?? String(isProd)) === "true";
 
+/**
+ * Login urinishlarini cheklash (tahlil D1).
+ * 15 daqiqada 10 urinish — odam xato yozsa yetadi, brute-force uchun yetmaydi.
+ * Ikki kalit: IP va login (IP almashtirilsa ham hisob himoyalanadi).
+ */
+const loginRateLimit = rateLimit({
+  windowMs: 15 * 60_000,
+  max: 10,
+  keys: async (c) => {
+    const keys = [`ip:${clientIp(c)}`];
+    try {
+      const body = (await c.req.raw.clone().json()) as { login?: unknown };
+      if (typeof body.login === "string" && body.login.length > 0) {
+        keys.push(`login:${body.login.toLowerCase()}`);
+      }
+    } catch {
+      // Body yaroqsiz bo'lsa — zValidator baribir 400 qaytaradi.
+    }
+    return keys;
+  },
+});
+
 /** Ekran 1 (bo'lim 6): "login + parol". Rol tanlanmaydi — login orqali topiladi. */
-authRoutes.post("/login", zValidator("json", loginRequestSchema), async (c) => {
+authRoutes.post("/login", loginRateLimit, zValidator("json", loginRequestSchema), async (c) => {
   const { login, password } = c.req.valid("json");
 
   const rows = await db.select().from(users).where(eq(users.login, login)).limit(1);

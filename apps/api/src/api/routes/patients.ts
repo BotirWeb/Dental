@@ -1,7 +1,12 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { and, eq, ilike, isNull, or } from "drizzle-orm";
-import { createPatientSchema, searchPatientsQuerySchema } from "@dental/shared";
+import { and, eq, ilike, isNull, like, or } from "drizzle-orm";
+import {
+  createPatientSchema,
+  looksLikePhone,
+  normalizePhone,
+  searchPatientsQuerySchema,
+} from "@dental/shared";
 import { db } from "../../db/client";
 import { patients } from "../../db/schema";
 import { requireAuth } from "../middleware/auth";
@@ -24,13 +29,31 @@ patientRoutes.get("/", zValidator("query", searchPatientsQuerySchema), async (c)
   const user = c.get("user");
   const { q } = c.req.valid("query");
 
-  const whereClause = q
-    ? and(
-        eq(patients.clinicId, user.clinicId),
-        isNull(patients.deletedAt),
-        or(ilike(patients.fullName, `%${q}%`), ilike(patients.phone, `%${q}%`)),
-      )
-    : and(eq(patients.clinicId, user.clinicId), isNull(patients.deletedAt));
+  const scope = and(eq(patients.clinicId, user.clinicId), isNull(patients.deletedAt));
+
+  let whereClause = scope;
+
+  if (q) {
+    if (looksLikePhone(q)) {
+      /**
+       * TELEFON BO'YICHA — tahlil C1.
+       *
+       * Avval `ILIKE '%...%'` ishlatilardi: boshidagi `%` sababli btree
+       * indeks UMUMAN ishlamas edi, har qidiruvda to'liq jadval skani
+       * ketardi. Endi normalizatsiyalangan ustunda PREFIKS qidiruv —
+       * `patients_phone_norm_idx` indeksi ishlaydi.
+       *
+       * Admin "90 123" deb yozsa ham, "+998901" deb yozsa ham topiladi,
+       * chunki ikkala tomon ham normalizatsiyadan o'tadi.
+       */
+      whereClause = and(scope, like(patients.phoneNormalized, `${normalizePhone(q)}%`))!;
+    } else {
+      whereClause = and(
+        scope,
+        or(ilike(patients.fullName, `%${q}%`), like(patients.phoneNormalized, `${normalizePhone(q)}%`)),
+      )!;
+    }
+  }
 
   const rows = await db.select().from(patients).where(whereClause).limit(50);
   return c.json(rows);
@@ -62,12 +85,35 @@ patientRoutes.post("/", requireRole("owner", "admin"), zValidator("json", create
   const user = c.get("user");
   const input = c.req.valid("json");
 
+  const phoneNormalized = normalizePhone(input.phone);
+
+  /**
+   * DUBLIKAT OGOHLANTIRISHI — tahlil C3.
+   *
+   * Qattiq UNIQUE cheklov ATAYLAB qo'yilmagan: O'zbekistonda oila a'zolari
+   * (ona va bola) bitta telefondan foydalanadi. Shuning uchun yozuv
+   * to'silmaydi — javobda `duplicates` qaytariladi va interfeys
+   * "Shu raqam bilan bemor bor: ... — baribir qo'shilsinmi?" deb so'raydi.
+   */
+  const duplicates = await db
+    .select({ id: patients.id, fullName: patients.fullName, phone: patients.phone })
+    .from(patients)
+    .where(
+      and(
+        eq(patients.clinicId, user.clinicId),
+        isNull(patients.deletedAt),
+        eq(patients.phoneNormalized, phoneNormalized),
+      ),
+    )
+    .limit(5);
+
   const [created] = await db
     .insert(patients)
     .values({
       clinicId: user.clinicId,
       fullName: input.fullName,
       phone: input.phone,
+      phoneNormalized,
       birthDate: input.birthDate,
       gender: input.gender,
       source: input.source,
@@ -86,5 +132,5 @@ patientRoutes.post("/", requireRole("owner", "admin"), zValidator("json", create
     newValue: created,
   });
 
-  return c.json(created, 201);
+  return c.json({ ...created, duplicates }, 201);
 });

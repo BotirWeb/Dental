@@ -1,4 +1,5 @@
 import {
+  type AnyPgColumn,
   pgEnum,
   pgTable,
   uuid,
@@ -11,8 +12,14 @@ import {
   uniqueIndex,
   index,
 } from "drizzle-orm/pg-core";
-import { USER_ROLES, APPOINTMENT_STATUSES, PAYMENT_METHODS, DOCTOR_PCT_BASES } from "@dental/shared";
-import { money, percent, createdAtCol, deletedAtCol } from "./columns";
+import {
+  USER_ROLES,
+  APPOINTMENT_STATUSES,
+  PAYMENT_METHODS,
+  DOCTOR_PCT_BASES,
+  DISCOUNT_TYPES,
+} from "@dental/shared";
+import { money, percent, decimalValue, createdAtCol, deletedAtCol } from "./columns";
 
 /**
  * MVP ma'lumotlar modeli — qollanma bo'lim 5 ("Ma'lumotlar modeli") asosida,
@@ -41,6 +48,8 @@ export const paymentMethodEnum = pgEnum("payment_method", PAYMENT_METHODS);
  * qilib qo'yildi (default: "gross"). Ko'ring: src/domain/doctorEarnings.ts
  */
 export const doctorPctBasisEnum = pgEnum("doctor_pct_basis", DOCTOR_PCT_BASES);
+/** Chegirma turi — tahlil B2 (so'm yoki foiz, endi aniq). */
+export const discountTypeEnum = pgEnum("discount_type", DISCOUNT_TYPES);
 export const auditActionEnum = pgEnum("audit_action", ["create", "update", "delete"]);
 
 // ---------------------------------------------------------------------------
@@ -137,7 +146,17 @@ export const patients = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     clinicId: uuid("clinic_id").notNull().references(() => clinics.id),
     fullName: text("full_name").notNull(),
+    /** Foydalanuvchi kiritgan ASL matn (chekda qanday yozilgan bo'lsa). */
     phone: text("phone").notNull(),
+    /**
+     * Kanonik 9 raqam — tahlil C1-C3. Qidiruv va dublikat tekshiruvi SHU
+     * ustun bo'yicha ketadi (`normalizePhone`, @dental/shared).
+     *
+     * UNIQUE EMAS — ataylab: O'zbekistonda oila a'zolari (ona va bola)
+     * bitta raqamdan foydalanadi. Dublikat qattiq taqiqlanmaydi, balki
+     * yozuv qo'shishda OGOHLANTIRISH ko'rsatiladi (routes/patients.ts).
+     */
+    phoneNormalized: text("phone_normalized").notNull().default(""),
     birthDate: date("birth_date"),
     gender: text("gender"), // "male" | "female" — MVP'da erkin, keyin enum bo'lishi mumkin
     source: text("source"), // qayerdan bilgan (referral, instagram, ...)
@@ -151,7 +170,22 @@ export const patients = pgTable(
   },
   (t) => ({
     clinicIdx: index("patients_clinic_idx").on(t.clinicId),
-    phoneIdx: index("patients_phone_idx").on(t.clinicId, t.phone),
+    /**
+     * Prefiks qidiruv (`LIKE '9012%'`) uchun — tahlil C1.
+     *
+     * `text_pattern_ops` MAJBURIY. Usiz PostgreSQL bu indeksni prefiks
+     * shartiga UMUMAN ishlatmaydi (lokal Postgres 16 da EXPLAIN bilan
+     * tekshirilgan: `enable_seqscan=off` bo'lganda ham planner boshqa
+     * indeksga o'tib, LIKE'ni Filter sifatida bajardi).
+     *
+     * Natija (20 000 bemor):
+     *   text_pattern_ops'siz -> Seq Scan
+     *   text_pattern_ops'bilan -> Index Scan
+     */
+    phoneNormIdx: index("patients_phone_norm_idx").on(
+      t.clinicId,
+      t.phoneNormalized.op("text_pattern_ops"),
+    ),
     nameIdx: index("patients_name_idx").on(t.clinicId, t.fullName),
   }),
 );
@@ -202,6 +236,8 @@ export const visits = pgTable(
     finishedAt: timestamp("finished_at", { withTimezone: true }),
     note: text("note"),
     createdAt: createdAtCol(),
+    /** Tamoyil #4 (tahlil A2): tibbiy yozuv o'chirilmaydi, belgilanadi. */
+    deletedAt: deletedAtCol(),
   },
   (t) => ({
     clinicIdx: index("visits_clinic_idx").on(t.clinicId),
@@ -260,21 +296,74 @@ export const performedServices = pgTable(
     surfaces: text("surfaces"), // masalan 'MOD' — nullable
     qty: integer("qty").notNull().default(1),
     priceSnapshot: money("price_snapshot").notNull(),
-    /** FARAZ (dala ishida aniqlanadi): chegirma so'mda, foizda emas —
-     * bo'lim 13 ochiq savollar ro'yxatida yo'q, lekin shifokor foizi bilan
-     * bir xil noaniqlik toifasiga kiradi. Kerak bo'lsa keyin o'zgartiriladi. */
-    discount: money("discount").notNull().default("0"),
+    /**
+     * CHEGIRMA — tahlil B2. Avval bitta `discount` ustuni bor edi va uning
+     * so'mmi yoki foizmi ekani hech qayerda yozilmagan edi ("FARAZ QILINDI").
+     * Endi uchta ustun:
+     *   discount_type   — "amount" (so'm) yoki "percent" (0-100)
+     *   discount_value  — foydalanuvchi kiritgan qiymat, o'sha birlikda
+     *   discount_amount — HISOBLANGAN so'm, snapshot (hisobotlar shuni oladi)
+     *
+     * Chegirma har doim SATR jamisiga (price_snapshot * qty) qo'llanadi,
+     * donaga emas. Ko'ring: src/domain/discount.ts
+     */
+    discountType: discountTypeEnum("discount_type").notNull().default("amount"),
+    discountValue: decimalValue("discount_value").notNull().default("0"),
+    discountAmount: money("discount_amount").notNull().default("0"),
     doctorPctSnapshot: percent("doctor_pct_snapshot").notNull(),
     materialCostSnapshot: money("material_cost_snapshot").notNull().default("0"),
     labCost: money("lab_cost").notNull().default("0"),
     /** Kafolat: tushum yo'q, xarajat bor. Ko'ring src/domain/doctorEarnings.ts */
     isWarranty: boolean("is_warranty").notNull().default(false),
     createdAt: createdAtCol(),
+    /** Tamoyil #4 (tahlil A2): moliyaviy yozuv o'chirilmaydi. */
+    deletedAt: deletedAtCol(),
   },
   (t) => ({
     clinicIdx: index("performed_services_clinic_idx").on(t.clinicId),
     visitIdx: index("performed_services_visit_idx").on(t.visitId),
     doctorIdx: index("performed_services_doctor_idx").on(t.doctorId),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// cash_sessions — KASSA SMENASI (tahlil B1).
+//
+// MUAMMO: avval kunlik hisobot faqat HISOBLANGAN edi, TEKSHIRILMAGAN.
+// Ega uchun eng muhim raqam — tizimdagi naqd va qo'ldagi naqd orasidagi FARQ.
+// Bu jadvalsiz "kassada 200 000 so'm yetishmayapti" degan savol tug'ilmaydi,
+// ya'ni tizim o'zini o'zi tekshirmaydi.
+//
+// Ishlash tartibi: smena ochiladi -> naqd to'lovlar unga bog'lanadi
+// (payments.cash_session_id) -> smena yopilganda admin pulni sanaydi ->
+// expected_cash (tizim) va counted_cash (qo'l) solishtiriladi.
+// Ko'ring: src/domain/cashSession.ts
+// ---------------------------------------------------------------------------
+
+export const cashSessions = pgTable(
+  "cash_sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    clinicId: uuid("clinic_id").notNull().references(() => clinics.id),
+    openedBy: uuid("opened_by").notNull().references(() => users.id),
+    openedAt: timestamp("opened_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Smena boshidagi qoldiq (kassadagi mayda pul). */
+    openingFloat: money("opening_float").notNull().default("0"),
+    closedBy: uuid("closed_by").references(() => users.id),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    /** Tizim hisoblagan naqd: opening_float + smenadagi naqd to'lovlar jamisi. */
+    expectedCash: money("expected_cash"),
+    /** Admin qo'lda sanagan naqd. */
+    countedCash: money("counted_cash"),
+    /** counted - expected. Manfiy = yetishmayapti. Ega ko'radigan raqam. */
+    diff: money("diff"),
+    note: text("note"),
+    createdAt: createdAtCol(),
+    deletedAt: deletedAtCol(),
+  },
+  (t) => ({
+    clinicIdx: index("cash_sessions_clinic_idx").on(t.clinicId),
+    openIdx: index("cash_sessions_open_idx").on(t.clinicId, t.closedAt),
   }),
 );
 
@@ -292,12 +381,46 @@ export const payments = pgTable(
     method: paymentMethodEnum("method").notNull(),
     paidAt: timestamp("paid_at", { withTimezone: true }).notNull(),
     visitId: uuid("visit_id").references(() => visits.id), // NULLABLE — avans ham bo'lishi mumkin
+    /** Qaysi kassa smenasida qabul qilindi (tahlil B1). Naqd bo'lmagan
+     * to'lov uchun NULL bo'lishi mumkin. */
+    cashSessionId: uuid("cash_session_id").references(() => cashSessions.id),
     createdBy: uuid("created_by").notNull().references(() => users.id),
     note: text("note"),
+
+    // -----------------------------------------------------------------------
+    // TO'LOVNI TUZATISH (tahlil A3). Admin 500 000 o'rniga 5 000 000 kiritsa
+    // nima bo'ladi? Avval hech narsa — tuzatish yo'li yo'q edi.
+    //
+    // Ikki mexanizm birga ishlaydi:
+    //   1. TUZATUVCHI YOZUV (buxgalteriya uslubi) — manfiy summali yangi
+    //      qator, `reversal_of_id` asl yozuvga ishora qiladi. Asl yozuv
+    //      O'ZGARMAYDI, revizor ikkalasini ham ko'radi.
+    //   2. BEKOR BELGISI — asl yozuvda `voided_at` qo'yiladi, interfeys uni
+    //      chizib ko'rsatadi.
+    //
+    // ⚠️ KANONIK QOIDA (buzilmasin): hisobotlar `deleted_at IS NULL` bo'lgan
+    // BARCHA qatorlarni qo'shadi. Tuzatuvchi yozuv manfiy bo'lgani uchun
+    // o'zi nolga chiqaradi. `voided_at` ni hisobot filtrida ISHLATMANG —
+    // aks holda summa IKKI MARTA ayriladi. Ko'ring: src/domain/payments.ts
+    // -----------------------------------------------------------------------
+    /** Bu qator qaysi to'lovni tuzatyapti (manfiy summali qator uchun). */
+    reversalOfId: uuid("reversal_of_id").references((): AnyPgColumn => payments.id),
+    /** Asl yozuvda: qachon bekor qilindi (faqat UI belgisi). */
+    voidedAt: timestamp("voided_at", { withTimezone: true }),
+    voidedBy: uuid("voided_by").references(() => users.id),
+    voidReason: text("void_reason"),
+
+    createdAt: createdAtCol(),
+    /** Tamoyil #4 (tahlil A2). Bu — umuman bo'lmasligi kerak bo'lgan qator
+     * uchun (masalan noto'g'ri bemorga yozilgan). Oddiy tuzatish yo'li —
+     * yuqoridagi reversal, bu emas. */
+    deletedAt: deletedAtCol(),
   },
   (t) => ({
     clinicIdx: index("payments_clinic_idx").on(t.clinicId),
     patientIdx: index("payments_patient_idx").on(t.patientId),
+    sessionIdx: index("payments_cash_session_idx").on(t.cashSessionId),
+    reversalIdx: index("payments_reversal_idx").on(t.reversalOfId),
   }),
 );
 
@@ -318,6 +441,8 @@ export const expenses = pgTable(
     receiptUrl: text("receipt_url"),
     createdBy: uuid("created_by").notNull().references(() => users.id),
     createdAt: createdAtCol(),
+    /** Tamoyil #4 (tahlil A2): moliyaviy yozuv o'chirilmaydi. */
+    deletedAt: deletedAtCol(),
   },
   (t) => ({ clinicIdx: index("expenses_clinic_idx").on(t.clinicId) }),
 );

@@ -5,7 +5,7 @@ function makeService(overrides: Partial<PerformedServiceInput> = {}): PerformedS
   return {
     priceSnapshot: 500_000,
     qty: 1,
-    discount: 0,
+    discountAmount: 0,
     doctorPctSnapshot: 40,
     materialCostSnapshot: 50_000,
     labCost: 0,
@@ -16,11 +16,11 @@ function makeService(overrides: Partial<PerformedServiceInput> = {}): PerformedS
 
 describe("calculateRevenue", () => {
   it("narx * qty - chegirma ni qaytaradi", () => {
-    expect(calculateRevenue(makeService({ priceSnapshot: 200_000, qty: 2, discount: 50_000 }))).toBe(350_000);
+    expect(calculateRevenue(makeService({ priceSnapshot: 200_000, qty: 2, discountAmount: 50_000 }))).toBe(350_000);
   });
 
   it("chegirma narxdan katta bo'lsa 0 dan pastga tushmaydi", () => {
-    expect(calculateRevenue(makeService({ priceSnapshot: 100_000, qty: 1, discount: 500_000 }))).toBe(0);
+    expect(calculateRevenue(makeService({ priceSnapshot: 100_000, qty: 1, discountAmount: 500_000 }))).toBe(0);
   });
 
   it("kafolat bo'lsa tushum 0", () => {
@@ -36,7 +36,7 @@ describe("calculateDoctorEarning — basis: gross", () => {
   });
 
   it("chegirma hisobga olingan tushumdan foiz oladi", () => {
-    const result = calculateDoctorEarning(makeService({ priceSnapshot: 500_000, discount: 100_000, doctorPctSnapshot: 50 }), "gross");
+    const result = calculateDoctorEarning(makeService({ priceSnapshot: 500_000, discountAmount: 100_000, doctorPctSnapshot: 50 }), "gross");
     // revenue = 400_000, 50% => 200_000
     expect(result).toBe(200_000);
   });
@@ -68,7 +68,7 @@ describe("calculateServiceMargin", () => {
     const service = makeService({
       priceSnapshot: 500_000,
       qty: 1,
-      discount: 0,
+      discountAmount: 0,
       doctorPctSnapshot: 40,
       materialCostSnapshot: 50_000,
       labCost: 30_000,

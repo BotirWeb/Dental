@@ -19,6 +19,15 @@ import { numeric, timestamp } from "drizzle-orm/pg-core";
 
 export const money = (name: string) => numeric(name, { precision: 14, scale: 0 });
 
+/**
+ * Chegirma kiritma qiymati (tahlil B2). Bitta ustun ikki xil birlikni
+ * ko'taradi, shuning uchun `money` ham, `percent` ham yaramaydi:
+ *   - discount_type = "amount"  -> so'm (kasr ishlatilmaydi)
+ *   - discount_type = "percent" -> 0.00-100.00
+ * Hisoblangan natija har doim `discount_amount` (money) da saqlanadi.
+ */
+export const decimalValue = (name: string) => numeric(name, { precision: 14, scale: 2 });
+
 /** Foiz ustuni (masalan shifokor foizi): 0.00–999.99 oralig'ida, kasr bilan. */
 export const percent = (name: string) => numeric(name, { precision: 5, scale: 2 });
 
@@ -42,5 +51,14 @@ export function toPercentInput(value: number): string {
 }
 
 export function fromPercent(value: string): number {
+  return Number(value);
+}
+
+/** DB'ga yozishdan oldin: number -> decimalValue ustuni kutgan string. */
+export function toDecimalInput(value: number): string {
+  return value.toFixed(2);
+}
+
+export function fromDecimal(value: string): number {
   return Number(value);
 }

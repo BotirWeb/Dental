@@ -1,4 +1,5 @@
 import type { DoctorPctBasis } from "@dental/shared";
+import { lineTotal } from "./discount";
 
 /**
  * SOF FUNKSIYA — HTTP va DB'dan ajratilgan (qollanma bo'lim 9, qoida 1).
@@ -19,7 +20,13 @@ import type { DoctorPctBasis } from "@dental/shared";
 export interface PerformedServiceInput {
   priceSnapshot: number;
   qty: number;
-  discount: number;
+  /**
+   * HISOBLANGAN chegirma, so'mda (tahlil B2). Avval bu `discount` deb
+   * atalardi va uning so'mmi/foizmi ekani noaniq edi. Endi qiymat
+   * `computeDiscountAmount` dan keladi va u yerda TEKSHIRILGAN
+   * (satr jamisidan katta bo'la olmaydi).
+   */
+  discountAmount: number;
   doctorPctSnapshot: number; // 0-100 oralig'ida, kasr bilan (masalan 37.5)
   materialCostSnapshot: number;
   labCost: number;
@@ -46,9 +53,16 @@ function roundSom(value: number): number {
  * Kafolat bo'yicha qayta ish uchun tushum 0 — bo'lim 5: "kafolat: tushum
  * yo'q, xarajat bor".
  */
-export function calculateRevenue(ps: Pick<PerformedServiceInput, "priceSnapshot" | "qty" | "discount" | "isWarranty">): number {
+export function calculateRevenue(
+  ps: Pick<PerformedServiceInput, "priceSnapshot" | "qty" | "discountAmount" | "isWarranty">,
+): number {
   if (ps.isWarranty) return 0;
-  const gross = ps.priceSnapshot * ps.qty - ps.discount;
+
+  // `discountAmount` src/domain/discount.ts da allaqachon tekshirilgan
+  // (satr jamisidan katta bo'la olmaydi), shuning uchun bu yerda
+  // Math.max faqat himoya chorasi — u ishga tushsa, demak chegirma
+  // validatsiyasiz kiritilgan va bu XATO.
+  const gross = lineTotal(ps.priceSnapshot, ps.qty) - ps.discountAmount;
   return roundSom(Math.max(gross, 0));
 }
 

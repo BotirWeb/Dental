@@ -41,6 +41,25 @@ export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 export const DOCTOR_PCT_BASES = ["gross", "after_material"] as const;
 export type DoctorPctBasis = (typeof DOCTOR_PCT_BASES)[number];
 
+/**
+ * Chegirma turi — tahlil B2.
+ *
+ * MUAMMO: avvalgi sxemada `performed_services.discount` bitta ustun edi va
+ * "so'mdami yoki foizdami" hech qayerda yozilmagan ("FARAZ QILINDI" deb
+ * belgilangan). Chegirma turi noto'g'ri talqin qilinsa — marja hisobi ham,
+ * shifokor foizi ham noto'g'ri chiqadi.
+ *
+ * YECHIM: tur va qiymat alohida saqlanadi, hisoblangan so'm esa snapshot
+ * sifatida uchinchi ustunda (`discount_amount`).
+ *
+ * - "amount"  → `discount_value` so'mda, SATR jamisiga (price * qty) nisbatan
+ * - "percent" → `discount_value` 0-100 oralig'ida, SATR jamisidan foiz
+ *
+ * MUHIM: chegirma har doim SATR jamisiga qo'llanadi, donaga emas.
+ */
+export const DISCOUNT_TYPES = ["amount", "percent"] as const;
+export type DiscountType = (typeof DISCOUNT_TYPES)[number];
+
 /** Xarajat kategoriyasi — MVP'da erkin matn emas, lekin ro'yxat sozlamadan keladi.
  * Skeleton bosqichida faqat tip sifatida qoldiramiz, DB'da free-text + category jadvali
  * keyinroq (7,11-ekran ishi bilan birga) qo'shiladi. */
