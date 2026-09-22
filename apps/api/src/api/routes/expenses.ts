@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
+import { zValidate as zValidator } from "../validate";
 import { and, desc, eq, gte, isNull, lt } from "drizzle-orm";
 import { createExpenseSchema, expensesQuerySchema } from "@dental/shared";
 import { db } from "../../db/client";

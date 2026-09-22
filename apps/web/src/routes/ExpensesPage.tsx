@@ -65,7 +65,12 @@ export function ExpensesPage() {
       setShowForm(false);
       setCreateKey(crypto.randomUUID());
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : "Saqlab bo'lmadi");
+      if (err instanceof ApiError) {
+        setCreateKey(crypto.randomUUID());
+        setFormError(err.message);
+      } else {
+        setFormError("Saqlab bo'lmadi");
+      }
     } finally {
       setSaving(false);
     }

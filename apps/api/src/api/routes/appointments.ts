@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
+import { zValidate as zValidator } from "../validate";
 import { and, desc, eq, gt, isNull, lt, or } from "drizzle-orm";
 import { createAppointmentSchema, scheduleQuerySchema, updateAppointmentStatusSchema } from "@dental/shared";
 import { db } from "../../db/client";

@@ -1,6 +1,6 @@
 import { Hono, type Context } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
-import { zValidator } from "@hono/zod-validator";
+import { zValidate as zValidator } from "../validate";
 import { and, eq, isNull } from "drizzle-orm";
 import { loginRequestSchema, normalizeLogin } from "@dental/shared";
 import { db } from "../../db/client";

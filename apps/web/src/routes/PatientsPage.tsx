@@ -84,7 +84,17 @@ export function PatientsPage() {
       setShowForm(false);
       setCreateKey(crypto.randomUUID()); // muvaffaqiyatdan keyin yangi kalit (T4)
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : "Saqlab bo'lmadi");
+      if (err instanceof ApiError) {
+        // Server so'rovni ko'rib chiqdi va rad etdi (validatsiya va h.k.) —
+        // shu kalit shu tana bilan "band". Keyingi urinish (tuzatilgan
+        // bo'lsa ham) yangi kalit bilan bo'lsin, aks holda idempotentlik
+        // middleware'i "boshqa tana" deb 422 qaytaradi. Tarmoq xatosida
+        // (ApiError EMAS) kalit ATAYLAB o'zgarmaydi — chin retry deduplikatsiya qilinsin.
+        setCreateKey(crypto.randomUUID());
+        setFormError(err.message);
+      } else {
+        setFormError("Saqlab bo'lmadi");
+      }
     } finally {
       setSaving(false);
     }

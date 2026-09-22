@@ -165,7 +165,14 @@ export function CashierPage() {
       );
       await refreshVisit(created.id, selectedPatient.id);
     } catch (err) {
-      setVisitError(err instanceof ApiError ? err.message : "Vizitni boshlab bo'lmadi");
+      if (err instanceof ApiError) {
+        // Server javob berdi — kalit shu tana bilan "band" (T4), keyingi
+        // urinish (tuzatilgan bo'lsa ham) yangi kalit bilan bo'lsin.
+        setVisitKey(crypto.randomUUID());
+        setVisitError(err.message);
+      } else {
+        setVisitError("Vizitni boshlab bo'lmadi");
+      }
     } finally {
       setVisitBusy(false);
     }
@@ -207,7 +214,12 @@ export function CashierPage() {
       setSvcKey(crypto.randomUUID());
       await refreshVisit(visit.id, selectedPatient.id);
     } catch (err) {
-      setSvcError(err instanceof ApiError ? err.message : "Xizmatni qo'shib bo'lmadi");
+      if (err instanceof ApiError) {
+        setSvcKey(crypto.randomUUID());
+        setSvcError(err.message);
+      } else {
+        setSvcError("Xizmatni qo'shib bo'lmadi");
+      }
     } finally {
       setSvcBusy(false);
     }
@@ -229,7 +241,12 @@ export function CashierPage() {
       await refreshVisit(visit.id, selectedPatient.id);
       loadSession();
     } catch (err) {
-      setPayError(err instanceof ApiError ? err.message : "To'lovni saqlab bo'lmadi");
+      if (err instanceof ApiError) {
+        setPayKey(crypto.randomUUID());
+        setPayError(err.message);
+      } else {
+        setPayError("To'lovni saqlab bo'lmadi");
+      }
     } finally {
       setPayBusy(false);
     }

@@ -47,7 +47,7 @@ export function AppointmentModal({ day, chairs, doctors, prefill, onClose, onCre
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [idempotencyKey] = useState(() => crypto.randomUUID());
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
 
   useEffect(() => {
     if (!patientQuery.trim()) {
@@ -90,6 +90,9 @@ export function AppointmentModal({ day, chairs, doctors, prefill, onClose, onCre
       onCreated();
     } catch (err) {
       if (err instanceof ApiError) {
+        // Server javob berdi (rad etdi) — shu kalit shu tana bilan "band",
+        // keyingi (tuzatilgan bo'lsa ham) urinish yangi kalit olsin (T4).
+        setIdempotencyKey(crypto.randomUUID());
         setError(err.message);
       } else {
         setError("Saqlab bo'lmadi");

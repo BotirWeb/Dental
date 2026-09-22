@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
+import { zValidate as zValidator } from "../validate";
 import { and, eq, ilike, isNull, like, or } from "drizzle-orm";
 import {
   createPatientSchema,
