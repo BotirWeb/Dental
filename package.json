@@ -9,6 +9,7 @@
     "dev:web": "pnpm --filter @dental/web dev",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
+    "test:integration": "pnpm --filter @dental/api test:integration",
     "typecheck": "pnpm -r typecheck",
     "db:generate": "pnpm --filter @dental/api db:generate",
     "db:migrate": "pnpm --filter @dental/api db:migrate",

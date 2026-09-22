@@ -2,6 +2,7 @@ node_modules
 dist
 build
 .env
+.env.test
 *.local
 .DS_Store
 pnpm-lock.yaml.bak
