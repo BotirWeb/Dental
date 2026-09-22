@@ -17,6 +17,7 @@ import { ServicesPage } from "./routes/ServicesPage";
 import { DailyReportPage } from "./routes/DailyReportPage";
 import { MarginReportPage } from "./routes/MarginReportPage";
 import { DoctorReportPage } from "./routes/DoctorReportPage";
+import { UsersPage } from "./routes/UsersPage";
 import { NotFoundPage } from "./routes/NotFoundPage";
 import { SCREENS } from "./routes/screens";
 
@@ -62,6 +63,7 @@ export default function App() {
                   <Route path="reports/daily" element={<DailyReportPage />} />
                   <Route path="reports/margin" element={<MarginReportPage />} />
                   <Route path="reports/doctors" element={<DoctorReportPage />} />
+                  <Route path="users" element={<UsersPage />} />
                 </Route>
 
                 {SCREENS.filter((s) => s.status === "todo").map((screen) => (

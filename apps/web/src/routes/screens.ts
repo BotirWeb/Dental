@@ -95,6 +95,7 @@ export const SCREENS: ScreenDef[] = [
     path: "/users",
     label: "Foydalanuvchilar",
     roles: OWNER,
-    status: "todo",
+    status: "ready",
+    note: "Yaratish, rol/holat o'zgartirish, parol tiklash — bajarildi (2026-09-22)",
   },
 ];

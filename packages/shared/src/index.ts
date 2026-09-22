@@ -15,3 +15,4 @@ export * from "./dto/patientBalance";
 export * from "./dto/expenses";
 export * from "./dto/serviceCategories";
 export * from "./dto/reports";
+export * from "./dto/users";
