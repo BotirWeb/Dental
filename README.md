@@ -98,8 +98,16 @@ avtomatik oladi.
 
 ```bash
 pnpm typecheck   # barcha paketlar
-pnpm test        # domain unit testlar (vitest)
+pnpm test        # domain unit testlar (vitest, DB'siz, har doim tez)
 pnpm build       # api typecheck + web production build
+```
+
+DB-bog'liq integratsiya testlar (T2/T3/T4 — klinika izolyatsiyasi, sessiya
+muddati, idempotentlik) alohida, haqiqiy Postgres talab qiladi:
+
+```bash
+cp apps/api/.env.test.example apps/api/.env.test   # DATABASE_URL'ni sozlang — nomida "test" bo'lsin
+pnpm test:integration
 ```
 
 Frontend uchun ixtiyoriy end-to-end smoke-test (Playwright talab qiladi,
