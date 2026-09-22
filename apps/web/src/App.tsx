@@ -1,9 +1,11 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./state/AuthContext";
+import { NetworkStatusProvider } from "./state/NetworkContext";
 import { RequireAuth } from "./components/RequireAuth";
 import { RequireRole } from "./components/RequireRole";
 import { Shell } from "./components/Shell";
 import { ComingSoonScreen } from "./components/ComingSoonScreen";
+import { NetworkBanner } from "./components/NetworkBanner";
 import { LoginPage } from "./routes/LoginPage";
 import { DashboardPage } from "./routes/DashboardPage";
 import { PatientsPage } from "./routes/PatientsPage";
@@ -24,35 +26,38 @@ import { SCREENS } from "./routes/screens";
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
+      <NetworkStatusProvider>
+        <NetworkBanner />
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
 
-          <Route element={<RequireAuth />}>
-            <Route element={<Shell />}>
-              <Route index element={<DashboardPage />} />
+            <Route element={<RequireAuth />}>
+              <Route element={<Shell />}>
+                <Route index element={<DashboardPage />} />
 
-              <Route element={<RequireRole roles={["owner", "admin", "doctor"]} />}>
-                <Route path="patients" element={<PatientsPage />} />
-                <Route path="patients/:id" element={<PatientDetailPage />} />
-              </Route>
-
-              {SCREENS.filter((s) => s.status === "todo").map((screen) => (
-                <Route key={screen.path} element={<RequireRole roles={screen.roles} />}>
-                  <Route
-                    path={screen.path.replace(/^\//, "")}
-                    element={
-                      <ComingSoonScreen title={screen.label} screenNumber={screen.screenNumber} note={screen.note} />
-                    }
-                  />
+                <Route element={<RequireRole roles={["owner", "admin", "doctor"]} />}>
+                  <Route path="patients" element={<PatientsPage />} />
+                  <Route path="patients/:id" element={<PatientDetailPage />} />
                 </Route>
-              ))}
-            </Route>
-          </Route>
 
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
-      </AuthProvider>
+                {SCREENS.filter((s) => s.status === "todo").map((screen) => (
+                  <Route key={screen.path} element={<RequireRole roles={screen.roles} />}>
+                    <Route
+                      path={screen.path.replace(/^\//, "")}
+                      element={
+                        <ComingSoonScreen title={screen.label} screenNumber={screen.screenNumber} note={screen.note} />
+                      }
+                    />
+                  </Route>
+                ))}
+              </Route>
+            </Route>
+
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </AuthProvider>
+      </NetworkStatusProvider>
     </BrowserRouter>
   );
 }

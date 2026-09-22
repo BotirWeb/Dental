@@ -38,7 +38,8 @@ try {
   await page.waitForURL(/\/login$/, { timeout: 5000 });
   log("Auth qilinmaganda /login'ga yo'naltirdi", page.url().endsWith("/login"));
 
-  // 2) Login formani to'ldirib yuborish (seed'dagi owner bilan)
+  // 2) Login formani to'ldirib yuborish (seed'dagi owner bilan, T2: klinika kodi ham kerak)
+  await page.fill("#clinic", "namuna-klinika");
   await page.fill("#login", "owner");
   await page.fill("#password", "owner12345");
   const docReqsBeforeLogin = documentRequests.length;
@@ -68,6 +69,26 @@ try {
   await page.waitForSelector(`text=${uniquePhone}`, { timeout: 5000 });
   log("Yangi bemor ro'yxatda darhol ko'rindi (refreshsiz)", true);
   log("Bemor qo'shishda YANGI document so'rovi YO'Q", documentRequests.length === docReqsBeforeCreate);
+
+  // 4.5) T4: internet uzilganda banner chiqadi, saqlash tugmasi o'chadi,
+  // forma ma'lumoti saqlanib qoladi (o'chmaydi)
+  await page.click('button:has-text("Yangi bemor")');
+  const offlinePhone = `+99890${Math.floor(1000000 + Math.random() * 8999999)}`;
+  await page.fill('input[placeholder="+998 90 123 45 67"]', offlinePhone);
+  await page.locator("form").locator("input").first().fill("Oflayn Test Bemor");
+
+  await page.context().setOffline(true);
+  await page.waitForSelector('text=Internet yo'q', { timeout: 5000 });
+  log("Oflaynda banner chiqdi", true);
+  const submitDisabledOffline = await page.locator('form button[type="submit"]').isDisabled();
+  log("Oflaynda saqlash tugmasi o'chirilgan", submitDisabledOffline);
+  const phoneStillThere = await page.locator('input[placeholder="+998 90 123 45 67"]').inputValue();
+  log("Oflaynda forma ma'lumoti saqlanib qoldi", phoneStillThere === offlinePhone);
+
+  await page.context().setOffline(false);
+  await page.waitForSelector('text=Internet yo'q', { state: "hidden", timeout: 10000 });
+  log("Ulanish tiklangach banner yo'qoldi", true);
+  await page.click('button:has-text("Bekor qilish")');
 
   // 5) Rol bo'yicha cheklov: shifokor bemor qo'sha olmasligi kerak
   await page.click('button:has-text("Chiqish")');

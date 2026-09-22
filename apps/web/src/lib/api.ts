@@ -1,4 +1,7 @@
+import { reportNetworkError } from "./networkSignal";
+
 const BASE = "/api";
+const IDEMPOTENCY_HEADER = "Idempotency-Key";
 
 export class ApiError extends Error {
   status: number;
@@ -16,14 +19,23 @@ export class ApiError extends Error {
  * yozilmaydi.
  */
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    ...options,
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      ...options,
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    });
+  } catch (err) {
+    // HTTP javob umuman kelmadi — internet yo'q yoki server o'lik (T4:
+    // "Manba: ... + fetch tarmoq xatosi"). NetworkContext shuni ushlab,
+    // holatni qayta tekshiradi.
+    reportNetworkError();
+    throw err;
+  }
 
   if (!res.ok) {
     let message = `So'rov xato bilan tugadi (${res.status})`;
@@ -46,4 +58,16 @@ export const api = {
   get: <T>(path: string) => request<T>(path, { method: "GET" }),
   post: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: "POST", body: body !== undefined ? JSON.stringify(body) : undefined }),
+  /**
+   * Pul yoki vizit yaratuvchi so'rovlar uchun — T4 (tahlil M1). `idempotencyKey`
+   * forma ochilganda yaratiladi, qayta urinishda O'SHA kalit yuboriladi,
+   * muvaffaqiyatdan keyin chaqiruvchi tomon yangisini generatsiya qiladi
+   * (masalan `apps/web/src/routes/PatientsPage.tsx`).
+   */
+  postIdempotent: <T>(path: string, body: unknown, idempotencyKey: string) =>
+    request<T>(path, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: { [IDEMPOTENCY_HEADER]: idempotencyKey },
+    }),
 };

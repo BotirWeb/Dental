@@ -11,6 +11,7 @@ import { db } from "../../db/client";
 import { patients } from "../../db/schema";
 import { requireAuth } from "../middleware/auth";
 import { requireRole } from "../middleware/roles";
+import { idempotency } from "../middleware/idempotency";
 import { recordAudit } from "../audit";
 import type { AppVariables } from "../context";
 
@@ -80,57 +81,67 @@ patientRoutes.get("/:id", async (c) => {
   return c.json(patient);
 });
 
-/** Rol jadvali (bo'lim 6): bemor yozuvini admin/ega qo'shadi (registratura). */
-patientRoutes.post("/", requireRole("owner", "admin"), zValidator("json", createPatientSchema), async (c) => {
-  const user = c.get("user");
-  const input = c.req.valid("json");
+/**
+ * Rol jadvali (bo'lim 6): bemor yozuvini admin/ega qo'shadi (registratura).
+ * `idempotency()` — T4 (tahlil M1): sekin internetda ikki marta bosish yoki
+ * timeout'dan keyin qayta yuborish ikki marta bemor yaratmasin.
+ */
+patientRoutes.post(
+  "/",
+  requireRole("owner", "admin"),
+  idempotency(),
+  zValidator("json", createPatientSchema),
+  async (c) => {
+    const user = c.get("user");
+    const input = c.req.valid("json");
 
-  const phoneNormalized = normalizePhone(input.phone);
+    const phoneNormalized = normalizePhone(input.phone);
 
-  /**
-   * DUBLIKAT OGOHLANTIRISHI — tahlil C3.
-   *
-   * Qattiq UNIQUE cheklov ATAYLAB qo'yilmagan: O'zbekistonda oila a'zolari
-   * (ona va bola) bitta telefondan foydalanadi. Shuning uchun yozuv
-   * to'silmaydi — javobda `duplicates` qaytariladi va interfeys
-   * "Shu raqam bilan bemor bor: ... — baribir qo'shilsinmi?" deb so'raydi.
-   */
-  const duplicates = await db
-    .select({ id: patients.id, fullName: patients.fullName, phone: patients.phone })
-    .from(patients)
-    .where(
-      and(
-        eq(patients.clinicId, user.clinicId),
-        isNull(patients.deletedAt),
-        eq(patients.phoneNormalized, phoneNormalized),
-      ),
-    )
-    .limit(5);
+    /**
+     * DUBLIKAT OGOHLANTIRISHI — tahlil C3.
+     *
+     * Qattiq UNIQUE cheklov ATAYLAB qo'yilmagan: O'zbekistonda oila a'zolari
+     * (ona va bola) bitta telefondan foydalanadi. Shuning uchun yozuv
+     * to'silmaydi — javobda `duplicates` qaytariladi va interfeys
+     * "Shu raqam bilan bemor bor: ... — baribir qo'shilsinmi?" deb so'raydi.
+     */
+    const duplicates = await db
+      .select({ id: patients.id, fullName: patients.fullName, phone: patients.phone })
+      .from(patients)
+      .where(
+        and(
+          eq(patients.clinicId, user.clinicId),
+          isNull(patients.deletedAt),
+          eq(patients.phoneNormalized, phoneNormalized),
+        ),
+      )
+      .limit(5);
 
-  const [created] = await db
-    .insert(patients)
-    .values({
+    const [created] = await db
+      .insert(patients)
+      .values({
+        clinicId: user.clinicId,
+        fullName: input.fullName,
+        phone: input.phone,
+        phoneNormalized,
+        birthDate: input.birthDate,
+        gender: input.gender,
+        source: input.source,
+        consentMessaging: input.consentMessaging,
+        consentData: input.consentData,
+        notes: input.notes,
+      })
+      .returning();
+
+    await recordAudit({
       clinicId: user.clinicId,
-      fullName: input.fullName,
-      phone: input.phone,
-      phoneNormalized,
-      birthDate: input.birthDate,
-      gender: input.gender,
-      source: input.source,
-      consentMessaging: input.consentMessaging,
-      consentData: input.consentData,
-      notes: input.notes,
-    })
-    .returning();
+      userId: user.id,
+      entity: "patients",
+      entityId: created.id,
+      action: "create",
+      newValue: created,
+    });
 
-  await recordAudit({
-    clinicId: user.clinicId,
-    userId: user.id,
-    entity: "patients",
-    entityId: created.id,
-    action: "create",
-    newValue: created,
-  });
-
-  return c.json({ ...created, duplicates }, 201);
-});
+    return c.json({ ...created, duplicates }, 201);
+  },
+);

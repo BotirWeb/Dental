@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import type { CreatePatientInput, Patient } from "@dental/shared";
 import { api, ApiError } from "../lib/api";
 import { useAuth } from "../state/AuthContext";
+import { useNetworkStatus } from "../state/NetworkContext";
 import { formatDate } from "../lib/time";
 
 const emptyForm: CreatePatientInput = {
@@ -20,6 +21,7 @@ const emptyForm: CreatePatientInput = {
  */
 export function PatientsPage() {
   const { user } = useAuth();
+  const networkStatus = useNetworkStatus();
   const [query, setQuery] = useState("");
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,6 +31,17 @@ export function PatientsPage() {
   const [form, setForm] = useState<CreatePatientInput>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  /**
+   * T4 (tahlil M1): forma ochilganda yaratiladi, qayta urinishda O'SHA
+   * kalit yuboriladi (ilova sekin internetda tugmani ikki marta bossa yoki
+   * so'rov timeout'dan keyin qayta yuborilsa ham — bitta bemor yoziladi),
+   * muvaffaqiyatdan keyin yangisi generatsiya qilinadi.
+   */
+  const [createKey, setCreateKey] = useState<string>(() => crypto.randomUUID());
+
+  useEffect(() => {
+    if (showForm) setCreateKey(crypto.randomUUID());
+  }, [showForm]);
 
   const canCreate = user?.role === "owner" || user?.role === "admin";
 
@@ -65,10 +78,11 @@ export function PatientsPage() {
     setFormError(null);
     setSaving(true);
     try {
-      const created = await api.post<Patient>("/patients", form);
+      const created = await api.postIdempotent<Patient>("/patients", form, createKey);
       setPatients((prev) => [created, ...prev]);
       setForm(emptyForm);
       setShowForm(false);
+      setCreateKey(crypto.randomUUID()); // muvaffaqiyatdan keyin yangi kalit (T4)
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : "Saqlab bo'lmadi");
     } finally {
@@ -142,10 +156,10 @@ export function PatientsPage() {
           <div className="sm:col-span-2">
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || networkStatus !== "online"}
               className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
             >
-              {saving ? "Saqlanmoqda…" : "Saqlash"}
+              {saving ? "Saqlanmoqda…" : networkStatus !== "online" ? "Internet yo'q — saqlab bo'lmaydi" : "Saqlash"}
             </button>
           </div>
         </form>
