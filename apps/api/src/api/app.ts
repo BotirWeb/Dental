@@ -12,6 +12,7 @@ import { visitRoutes } from "./routes/visits";
 import { paymentRoutes } from "./routes/payments";
 import { expenseRoutes } from "./routes/expenses";
 import { serviceCategoryRoutes } from "./routes/serviceCategories";
+import { reportRoutes } from "./routes/reports";
 import { csrfProtection } from "./middleware/csrf";
 import type { AppVariables } from "./context";
 
@@ -61,6 +62,7 @@ api.route("/visits", visitRoutes);
 api.route("/payments", paymentRoutes);
 api.route("/expenses", expenseRoutes);
 api.route("/service-categories", serviceCategoryRoutes);
+api.route("/reports", reportRoutes);
 
 app.route("/api", api);
 
