@@ -3,8 +3,25 @@ import { eq } from "drizzle-orm";
 import type { UserRole } from "@dental/shared";
 import { app } from "../api/app";
 import { db } from "../db/client";
-import { auditLog, clinics, idempotencyKeys, patients, sessions, users } from "../db/schema";
+import {
+  appointments,
+  auditLog,
+  cashSessions,
+  chairs,
+  clinics,
+  doctors,
+  idempotencyKeys,
+  patients,
+  payments,
+  performedServices,
+  serviceCategories,
+  services,
+  sessions,
+  users,
+  visits,
+} from "../db/schema";
 import { hashPassword } from "../api/auth/password";
+import { toMoneyInput, toPercentInput } from "../db/columns";
 
 /**
  * Integratsiya-test yordamchilari — real Postgresga ulanadi
@@ -75,6 +92,68 @@ export async function loginAs(clinicSlug: string, login: string, password: strin
   return { cookie: `dental_session=${match[1]}`, status: res.status, body };
 }
 
+export interface TestDoctor {
+  id: string;
+  clinicId: string;
+  defaultPct: number;
+}
+
+export async function createTestDoctor(clinicId: string, opts: { defaultPct?: number } = {}): Promise<TestDoctor> {
+  const [row] = await db
+    .insert(doctors)
+    .values({
+      clinicId,
+      fullName: "Test Shifokor",
+      defaultPct: toPercentInput(opts.defaultPct ?? 40),
+    })
+    .returning();
+  return { id: row.id, clinicId, defaultPct: opts.defaultPct ?? 40 };
+}
+
+export interface TestChair {
+  id: string;
+  clinicId: string;
+}
+
+export async function createTestChair(clinicId: string): Promise<TestChair> {
+  const [row] = await db.insert(chairs).values({ clinicId, name: "Test kreslo" }).returning();
+  return { id: row.id, clinicId };
+}
+
+export interface TestService {
+  id: string;
+  clinicId: string;
+  price: number;
+  materialCost: number;
+}
+
+export async function createTestService(
+  clinicId: string,
+  opts: { price?: number; materialCost?: number } = {},
+): Promise<TestService> {
+  const price = opts.price ?? 350_000;
+  const materialCost = opts.materialCost ?? 40_000;
+  const [row] = await db
+    .insert(services)
+    .values({ clinicId, name: "Test xizmat", price: toMoneyInput(price), materialCost: toMoneyInput(materialCost) })
+    .returning();
+  return { id: row.id, clinicId, price, materialCost };
+}
+
+export interface TestPatient {
+  id: string;
+  clinicId: string;
+}
+
+export async function createTestPatient(clinicId: string, opts: { fullName?: string; phone?: string } = {}): Promise<TestPatient> {
+  const phone = opts.phone ?? `90${Math.floor(1_000_000 + Math.random() * 8_999_999)}`;
+  const [row] = await db
+    .insert(patients)
+    .values({ clinicId, fullName: opts.fullName ?? "Test Bemor", phone, phoneNormalized: phone })
+    .returning();
+  return { id: row.id, clinicId };
+}
+
 /** Sessiya jadvalidan token qiymatini o'qib olish (Cookie header'dan). */
 export function sessionTokenFromCookie(cookie: string): string {
   const match = cookie.match(/dental_session=([^;]+)/);
@@ -82,7 +161,11 @@ export function sessionTokenFromCookie(cookie: string): string {
   return match[1];
 }
 
-/** Test klinika va unga bog'liq BARCHA yozuvlarni tozalaydi (FK tartibida). */
+/**
+ * Test klinika va unga bog'liq BARCHA yozuvlarni tozalaydi (FK tartibida —
+ * eng "ichki" jadval, ya'ni boshqalarga eng ko'p ishora qiluvchisi, birinchi
+ * o'chiriladi).
+ */
 export async function cleanupClinic(clinicId: string): Promise<void> {
   const clinicUsers = await db.select({ id: users.id }).from(users).where(eq(users.clinicId, clinicId));
   for (const u of clinicUsers) {
@@ -90,6 +173,15 @@ export async function cleanupClinic(clinicId: string): Promise<void> {
   }
   await db.delete(idempotencyKeys).where(eq(idempotencyKeys.clinicId, clinicId));
   await db.delete(auditLog).where(eq(auditLog.clinicId, clinicId));
+  await db.delete(performedServices).where(eq(performedServices.clinicId, clinicId));
+  await db.delete(payments).where(eq(payments.clinicId, clinicId));
+  await db.delete(visits).where(eq(visits.clinicId, clinicId));
+  await db.delete(appointments).where(eq(appointments.clinicId, clinicId));
+  await db.delete(cashSessions).where(eq(cashSessions.clinicId, clinicId));
+  await db.delete(services).where(eq(services.clinicId, clinicId));
+  await db.delete(serviceCategories).where(eq(serviceCategories.clinicId, clinicId));
+  await db.delete(doctors).where(eq(doctors.clinicId, clinicId));
+  await db.delete(chairs).where(eq(chairs.clinicId, clinicId));
   await db.delete(patients).where(eq(patients.clinicId, clinicId));
   await db.delete(users).where(eq(users.clinicId, clinicId));
   await db.delete(clinics).where(eq(clinics.id, clinicId));

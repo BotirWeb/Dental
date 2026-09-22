@@ -47,8 +47,8 @@ export const SCREENS: ScreenDef[] = [
     path: "/cashier",
     label: "Kassa / vizit yakuni",
     roles: [...OWNER, "admin", "cashier"],
-    status: "todo",
-    note: "Hafta 5-6 — ENG MUHIM ekran (bo'lim 6)",
+    status: "ready",
+    note: "Smena, vizit, xizmat, to'lov — bajarildi (2026-09-22)",
   },
   {
     screenNumber: 7,

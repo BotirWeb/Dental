@@ -8,11 +8,13 @@ import {
   searchPatientsQuerySchema,
 } from "@dental/shared";
 import { db } from "../../db/client";
-import { patients } from "../../db/schema";
+import { patients, performedServices, payments, visits } from "../../db/schema";
+import { fromMoney } from "../../db/columns";
 import { requireAuth } from "../middleware/auth";
 import { requireRole } from "../middleware/roles";
 import { idempotency } from "../middleware/idempotency";
 import { recordAudit } from "../audit";
+import { calculatePatientBalance } from "../../domain/patientBalance";
 import type { AppVariables } from "../context";
 
 /**
@@ -79,6 +81,51 @@ patientRoutes.get("/:id", async (c) => {
   if (!patient) return c.json({ error: "Bemor topilmadi" }, 404);
 
   return c.json(patient);
+});
+
+/**
+ * Ekran 4/6 — bemor balansi. Kanonik formula: `src/domain/patientBalance.ts`
+ * (qollanma bo'lim 5.6). Bemorning BARCHA (har qaysi vizitdagi) xizmatlari
+ * va to'lovlari — faqat shu vizit emas.
+ */
+patientRoutes.get("/:id/balance", async (c) => {
+  const user = c.get("user");
+  const id = c.req.param("id");
+
+  const chargeRows = await db
+    .select({
+      priceSnapshot: performedServices.priceSnapshot,
+      qty: performedServices.qty,
+      discountAmount: performedServices.discountAmount,
+      isWarranty: performedServices.isWarranty,
+    })
+    .from(performedServices)
+    .innerJoin(visits, eq(performedServices.visitId, visits.id))
+    .where(
+      and(eq(visits.patientId, id), eq(performedServices.clinicId, user.clinicId), isNull(performedServices.deletedAt)),
+    );
+
+  const paymentRows = await db
+    .select({
+      id: payments.id,
+      amount: payments.amount,
+      reversalOfId: payments.reversalOfId,
+      voidedAt: payments.voidedAt,
+    })
+    .from(payments)
+    .where(and(eq(payments.patientId, id), eq(payments.clinicId, user.clinicId), isNull(payments.deletedAt)));
+
+  const balance = calculatePatientBalance(
+    chargeRows.map((r) => ({
+      priceSnapshot: fromMoney(r.priceSnapshot),
+      qty: r.qty,
+      discountAmount: fromMoney(r.discountAmount),
+      isWarranty: r.isWarranty,
+    })),
+    paymentRows.map((r) => ({ id: r.id, amount: fromMoney(r.amount), reversalOfId: r.reversalOfId, voidedAt: r.voidedAt })),
+  );
+
+  return c.json(balance);
 });
 
 /**

@@ -6,6 +6,10 @@ import { healthRoutes } from "./routes/health";
 import { doctorRoutes } from "./routes/doctors";
 import { chairRoutes } from "./routes/chairs";
 import { appointmentRoutes } from "./routes/appointments";
+import { serviceRoutes } from "./routes/services";
+import { cashSessionRoutes } from "./routes/cashSessions";
+import { visitRoutes } from "./routes/visits";
+import { paymentRoutes } from "./routes/payments";
 import { csrfProtection } from "./middleware/csrf";
 import type { AppVariables } from "./context";
 
@@ -49,6 +53,10 @@ api.route("/patients", patientRoutes);
 api.route("/doctors", doctorRoutes);
 api.route("/chairs", chairRoutes);
 api.route("/appointments", appointmentRoutes);
+api.route("/services", serviceRoutes);
+api.route("/cash-sessions", cashSessionRoutes);
+api.route("/visits", visitRoutes);
+api.route("/payments", paymentRoutes);
 
 app.route("/api", api);
 

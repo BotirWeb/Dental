@@ -11,6 +11,7 @@ import { DashboardPage } from "./routes/DashboardPage";
 import { PatientsPage } from "./routes/PatientsPage";
 import { PatientDetailPage } from "./routes/PatientDetailPage";
 import { SchedulePage } from "./routes/SchedulePage";
+import { CashierPage } from "./routes/CashierPage";
 import { NotFoundPage } from "./routes/NotFoundPage";
 import { SCREENS } from "./routes/screens";
 
@@ -41,6 +42,10 @@ export default function App() {
                   <Route path="patients" element={<PatientsPage />} />
                   <Route path="patients/:id" element={<PatientDetailPage />} />
                   <Route path="schedule" element={<SchedulePage />} />
+                </Route>
+
+                <Route element={<RequireRole roles={["owner", "admin", "cashier"]} />}>
+                  <Route path="cashier" element={<CashierPage />} />
                 </Route>
 
                 {SCREENS.filter((s) => s.status === "todo").map((screen) => (
