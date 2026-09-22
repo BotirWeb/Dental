@@ -14,10 +14,20 @@ const dateFormatter = new Intl.DateTimeFormat("uz-UZ", {
   dateStyle: "medium",
 });
 
+const timeFormatter = new Intl.DateTimeFormat("uz-UZ", {
+  timeZone: "Asia/Tashkent",
+  timeStyle: "short",
+});
+
 export function formatDateTime(iso: string): string {
   return dateTimeFormatter.format(new Date(iso));
 }
 
 export function formatDate(iso: string): string {
   return dateFormatter.format(new Date(iso));
+}
+
+/** Faqat vaqt (masalan "14:30") — ekran 2 "Jadval" katakchalari uchun. */
+export function formatTime(iso: string): string {
+  return timeFormatter.format(new Date(iso));
 }

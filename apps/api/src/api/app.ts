@@ -3,6 +3,9 @@ import { secureHeaders } from "hono/secure-headers";
 import { authRoutes } from "./routes/auth";
 import { patientRoutes } from "./routes/patients";
 import { healthRoutes } from "./routes/health";
+import { doctorRoutes } from "./routes/doctors";
+import { chairRoutes } from "./routes/chairs";
+import { appointmentRoutes } from "./routes/appointments";
 import { csrfProtection } from "./middleware/csrf";
 import type { AppVariables } from "./context";
 
@@ -43,6 +46,9 @@ const api = new Hono<{ Variables: AppVariables }>();
 api.route("/health", healthRoutes);
 api.route("/auth", authRoutes);
 api.route("/patients", patientRoutes);
+api.route("/doctors", doctorRoutes);
+api.route("/chairs", chairRoutes);
+api.route("/appointments", appointmentRoutes);
 
 app.route("/api", api);
 

@@ -1,14 +1,25 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import type { Patient } from "@dental/shared";
+import type { AppointmentWithPatient, Patient } from "@dental/shared";
 import { api, ApiError } from "../lib/api";
-import { formatDate } from "../lib/time";
+import { formatDate, formatDateTime } from "../lib/time";
 
-/** Ekran 4 "Bemor kartasi" — hozircha faqat asosiy ma'lumot. Vizit tarixi,
- * to'lovlar va qarz — hafta 3-6 ishi (appointments/visits/payments). */
+const APPOINTMENT_STATUS_LABELS: Record<string, string> = {
+  planned: "Rejalashtirilgan",
+  confirmed: "Tasdiqlangan",
+  arrived: "Keldi",
+  done: "Bajarildi",
+  no_show: "Kelmadi",
+  cancelled_patient: "Bemor bekor qildi",
+  cancelled_clinic: "Klinika bekor qildi",
+};
+
+/** Ekran 4 "Bemor kartasi" — asosiy ma'lumot + yozuvlar tarixi (ekran 2 bilan
+ * bog'liq). To'lovlar va qarz — ekran 6 "Kassa" ishi (hali qurilmagan). */
 export function PatientDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [patient, setPatient] = useState<Patient | null>(null);
+  const [appointments, setAppointments] = useState<AppointmentWithPatient[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -16,9 +27,14 @@ export function PatientDetailPage() {
     if (!id) return;
     setLoading(true);
     setError(null);
-    api
-      .get<Patient>(`/patients/${id}`)
-      .then(setPatient)
+    Promise.all([
+      api.get<Patient>(`/patients/${id}`),
+      api.get<AppointmentWithPatient[]>(`/appointments?patientId=${id}`),
+    ])
+      .then(([p, a]) => {
+        setPatient(p);
+        setAppointments(a);
+      })
       .catch((err) => setError(err instanceof ApiError ? err.message : "Yuklab bo'lmadi"))
       .finally(() => setLoading(false));
   }, [id]);
@@ -50,8 +66,24 @@ export function PatientDetailPage() {
             </div>
           </dl>
 
-          <div className="mt-6 rounded-md border border-dashed border-slate-300 p-4 text-sm text-slate-400">
-            Vizit tarixi, to'lovlar va qarz — bu bo'lim hafta 3-6 ishi (qollanma bo'lim 7).
+          <div className="mt-6">
+            <h2 className="text-sm font-medium text-slate-700">Yozuvlar (ekran 2 "Jadval")</h2>
+            {appointments.length === 0 ? (
+              <p className="mt-2 text-sm text-slate-400">Hali yozuv yo'q.</p>
+            ) : (
+              <ul className="mt-2 divide-y divide-slate-100 rounded-md border border-slate-200">
+                {appointments.map((a) => (
+                  <li key={a.id} className="flex items-center justify-between px-3 py-2 text-sm">
+                    <span className="text-slate-800">{formatDateTime(a.startAt)}</span>
+                    <span className="text-slate-500">{APPOINTMENT_STATUS_LABELS[a.status] ?? a.status}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="mt-4 rounded-md border border-dashed border-slate-300 p-4 text-sm text-slate-400">
+            To'lovlar va qarz — ekran 6 "Kassa" ishi (qollanma bo'lim 7, hali qurilmagan).
           </div>
         </div>
       )}

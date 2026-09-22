@@ -31,8 +31,8 @@ export const SCREENS: ScreenDef[] = [
     path: "/schedule",
     label: "Jadval",
     roles: [...OWNER, "admin", "doctor"],
-    status: "todo",
-    note: "Hafta 3-4 — kun/hafta, kreslo × vaqt grid",
+    status: "ready",
+    note: "Kun ko'rinishi (kreslo × vaqt grid) ishlaydi — hafta ko'rinishi hali yo'q",
   },
   {
     screenNumber: 3,
