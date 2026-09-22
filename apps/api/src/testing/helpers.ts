@@ -10,6 +10,7 @@ import {
   chairs,
   clinics,
   doctors,
+  expenses,
   idempotencyKeys,
   patients,
   payments,
@@ -178,6 +179,7 @@ export async function cleanupClinic(clinicId: string): Promise<void> {
   await db.delete(visits).where(eq(visits.clinicId, clinicId));
   await db.delete(appointments).where(eq(appointments.clinicId, clinicId));
   await db.delete(cashSessions).where(eq(cashSessions.clinicId, clinicId));
+  await db.delete(expenses).where(eq(expenses.clinicId, clinicId));
   await db.delete(services).where(eq(services.clinicId, clinicId));
   await db.delete(serviceCategories).where(eq(serviceCategories.clinicId, clinicId));
   await db.delete(doctors).where(eq(doctors.clinicId, clinicId));

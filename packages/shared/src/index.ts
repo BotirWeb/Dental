@@ -12,3 +12,5 @@ export * from "./dto/visits";
 export * from "./dto/performedServices";
 export * from "./dto/payments";
 export * from "./dto/patientBalance";
+export * from "./dto/expenses";
+export * from "./dto/serviceCategories";

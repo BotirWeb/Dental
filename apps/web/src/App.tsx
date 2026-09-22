@@ -12,6 +12,8 @@ import { PatientsPage } from "./routes/PatientsPage";
 import { PatientDetailPage } from "./routes/PatientDetailPage";
 import { SchedulePage } from "./routes/SchedulePage";
 import { CashierPage } from "./routes/CashierPage";
+import { ExpensesPage } from "./routes/ExpensesPage";
+import { ServicesPage } from "./routes/ServicesPage";
 import { NotFoundPage } from "./routes/NotFoundPage";
 import { SCREENS } from "./routes/screens";
 
@@ -46,6 +48,14 @@ export default function App() {
 
                 <Route element={<RequireRole roles={["owner", "admin", "cashier"]} />}>
                   <Route path="cashier" element={<CashierPage />} />
+                </Route>
+
+                <Route element={<RequireRole roles={["owner", "admin"]} />}>
+                  <Route path="expenses" element={<ExpensesPage />} />
+                </Route>
+
+                <Route element={<RequireRole roles={["owner"]} />}>
+                  <Route path="services" element={<ServicesPage />} />
                 </Route>
 
                 {SCREENS.filter((s) => s.status === "todo").map((screen) => (
