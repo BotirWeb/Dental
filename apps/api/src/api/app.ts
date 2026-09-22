@@ -1,10 +1,32 @@
 import { Hono } from "hono";
+import { secureHeaders } from "hono/secure-headers";
 import { authRoutes } from "./routes/auth";
 import { patientRoutes } from "./routes/patients";
 import { healthRoutes } from "./routes/health";
+import { csrfProtection } from "./middleware/csrf";
 import type { AppVariables } from "./context";
 
 export const app = new Hono<{ Variables: AppVariables }>();
+
+const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+/** Xavfsizlik headerlari — tahlil D2 / T3. Caddy'da EMAS, shu yerda — ikkalasida qo'shilib ketmasin. */
+app.use(
+  "*",
+  secureHeaders({
+    xFrameOptions: "DENY",
+    contentSecurityPolicy: {
+      defaultSrc: ["'none'"],
+      frameAncestors: ["'none'"],
+    },
+  }),
+);
+
+/** Holat o'zgartiruvchi so'rovlarda Origin tekshiruvi — tahlil D2 / T3, izoh: `middleware/csrf.ts`. */
+app.use("/api/*", csrfProtection({ allowedOrigins }));
 
 /**
  * Hamma route /api ostida. Shu tufayli frontend HAR DOIM bir xil origin'dan
@@ -26,6 +48,12 @@ app.route("/api", api);
 
 app.notFound((c) => c.json({ error: "Topilmadi" }, 404));
 
+/**
+ * Maxfiylik (bo'lim 8, T3): bu yerda FAQAT xato obyekti loglanadi — so'rov
+ * query string'i yoki tanasi HECH QACHON qo'shilmaydi (bemor telefoni,
+ * F.I.Sh shu yo'l bilan logga tushishi mumkin edi). Alohida so'rov logeri
+ * (masalan `hono/logger`) ataylab ulanmagan — aks holda maskalash kerak bo'lardi.
+ */
 app.onError((err, c) => {
   console.error(err);
   return c.json({ error: "Server xatosi" }, 500);
