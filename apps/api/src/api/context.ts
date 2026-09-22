@@ -9,6 +9,8 @@ import type { UserRole } from "@dental/shared";
 export interface AuthUser {
   id: string;
   clinicId: string;
+  clinicSlug: string;
+  clinicName: string;
   login: string;
   fullName: string;
   role: UserRole;
