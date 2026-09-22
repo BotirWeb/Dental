@@ -1,29 +1,33 @@
 # Dental — klinika boshqaruv tizimi
 
-Stomatologiya klinikalari uchun web tizim. Bu repo — **Faza 1 skeleton**
-(qollanma bo'lim 7: hafta 1-2 "Skelet: repo, Docker, DB migratsiya, auth,
-rollar, audit"), to'liq mahsulot emas.
+Stomatologiya klinikalari uchun web tizim. **Faza 1 (MVP) — barcha 12
+ekran bajarilgan** (qollanma bo'lim 7). Faza 2 (`treatment_plans`/
+`tooth_records`) va Faza 3 (bot, eslatma, telefoniya) hali yo'q.
 
 > **Muhim:** loyihaning to'liq spetsifikatsiyasi — biznes konteksti, rad
-> etilgan qarorlar, ma'lumotlar modeli, ochiq savollar — ushbu kod bilan
-> birga YURMAYDI, alohida "loyiha qo'llanmasi" hujjatida saqlanadi. Yangi
-> ishni boshlashdan oldin albatta o'sha hujjatni o'qing — bu yerda faqat
-> KOD haqida ma'lumot bor.
+> etilgan qarorlar, ma'lumotlar modeli, ochiq savollar — `docs/prd-v1.md`
+> ("loyiha qo'llanmasi"). Yangi ishni boshlashdan oldin albatta o'sha
+> hujjatni o'qing — bu yerda faqat KOD haqida ma'lumot bor. Joriy/
+> tugallangan vazifalar — `docs/tasks/`.
 
 ## Nima ishlaydi hozir
 
-- **Auth**: session cookie + argon2 — login/logout/me.
+- **Auth**: session cookie + argon2, klinika kodi + login (klinika ichida
+  noyob), sessiya idle/absolyut muddati, CSRF/xavfsizlik headerlari.
 - **Rollar**: owner / admin / doctor / cashier — middleware bilan.
 - **clinic_id qamrovi** va **audit_log** — har bir yozuv kim/qachon/nima
   o'zgargani bilan qayd etiladi.
-- **Bemorlar** (ekran 3) — qidirish + yaratish, to'liq ishlaydi.
-- **Shifokor foizi / marja hisobi** — sof funksiyalar, unit test bilan,
-  hisoblash asosi (`gross` / `after_material`) klinika darajasida
-  SOZLANADIGAN (hardcode emas — sabab: hujjat bo'lim 13 ochiq savoli).
+- **1–12-ekranlar** — Kirish, Jadval, Bemorlar, Bemor kartasi, Yozuv modal,
+  Kassa/vizit yakuni, Xarajatlar, Kunlik hisobot, Oylik marja, Shifokor
+  hisobi, Xizmat va narxlar, Foydalanuvchilar — barchasi ishlaydi.
+- **Moliyaviy yaxlitlik**: chegirma, shifokor foizi/marja, bemor balansi,
+  kassa smenasi tekshiruvi, to'lovni tuzatish (reversal) — sof funksiyalar,
+  unit test bilan. Shifokor foizi asosi (`gross`/`after_material`) klinika
+  darajasida sozlanadigan (bo'lim 13 ochiq savoli).
+- **Tarmoq uzilishiga chidamlilik**: idempotentlik middleware (pul/vizit
+  yaratuvchi endpoint'larda), oflayn holat indikatori.
 - **Frontend** — React Router SPA: sahifalar orasida o'tishda **hech qachon
   to'liq refresh bo'lmaydi**. `apps/web/e2e/smoke.mjs` shuni tekshiradi.
-- Qolgan 8 ekran (Jadval, Kassa, Xarajat, Hisobotlar, ...) — rol asosida
-  ko'rinadigan, lekin ichi bo'sh "todo" sahifalar. Keyingi ish shular.
 
 ## Papka tuzilishi
 
@@ -139,12 +143,13 @@ node apps/web/e2e/smoke.mjs
 
 ## Keyingi qadam
 
-Ikkitadan biri — tanlov foydalanuvchida (loyiha qo'llanmasi bo'lim 15'ga
-qarang):
+Faza 1 (MVP, 12 ekran) bajarilgan. Qaror foydalanuvchida (qollanma bo'lim 15):
 
-1. **Loyiha qo'llanmasi bo'lim 12** — "Birinchi hafta" dala ishi (klinikaga
-   borish, qo'ng'iroq jurnali, xarajat shabloni). Hujjat buni birinchi
-   deb hisoblaydi.
-2. **Faza 1, hafta 3-4** — Jadval (ekran 2) va Bemor kartasi (ekran 4)ni
-   to'liq qurish, `apps/api/src/api/routes/patients.ts` dagi naqshni
-   takrorlab.
+1. **Qollanma bo'lim 12** — "Birinchi hafta" dala ishi (klinikaga borish,
+   telefoniya provayderini aniqlash, real domen, "pilot" holatini
+   aniqlashtirish).
+2. **Faza 2** — `treatment_plans`/`tooth_records` (davolash rejasi, tish
+   kartasi) — hali loyihalanmagan.
+3. **Faza 3** — bot, eslatma (SMS/Telegram), telefoniya adapter, `calls`/
+   `messages` — `apps/api/src/adapters/telephony.ts` interfeysi tayyor,
+   implementatsiya yo'q.
