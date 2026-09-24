@@ -26,8 +26,9 @@ import { money, percent, decimalValue, createdAtCol, deletedAtCol } from "./colu
 
 /**
  * MVP ma'lumotlar modeli — qollanma bo'lim 5 ("Ma'lumotlar modeli") asosida,
- * so'zma-so'z. Faza 2/3 jadvallari (treatment_plans, tooth_records, calls,
- * messages) BU YERDA YO'Q — ular hali navbatda emas (bo'lim 7, 10).
+ * so'zma-so'z. Faza 2/3 jadvallari (treatment_plans, calls, messages) BU
+ * YERDA YO'Q — ular hali navbatda emas (bo'lim 7, 10). Faza 2 ning birinchi
+ * qismi — tish kartasi — `dental_charts` (T5) sifatida qo'shilgan.
  *
  * Besh tamoyil (bo'lim 5.1), har birini shu faylda qayerda bajarilgani:
  *   1. appointments (reja) va visits (fakt) alohida jadval.
@@ -75,6 +76,13 @@ export const clinics = pgTable(
     /** Sozlanadigan: shifokor foizi qanday hisoblanadi. Bo'lim 13 ochiq savol
      * javobi topilguncha default = "gross". */
     doctorPctBasis: doctorPctBasisEnum("doctor_pct_basis").notNull().default("gross"),
+    /**
+     * Klinikada yoqilgan modullar — CLAUDE.md qoida 7 ("Yangi modul feature
+     * flag ortida"), T5. Masalan `{"odontogram": true}`. Kalit yo'q = o'chiq;
+     * xom qiymat hech qachon to'g'ridan-to'g'ri ishlatilmaydi —
+     * `resolveClinicFeatures` (src/domain/clinicFeatures.ts) orqali o'qiladi.
+     */
+    features: jsonb("features").notNull().default({}),
     createdAt: createdAtCol(),
   },
   (t) => ({
@@ -478,6 +486,39 @@ export const expenses = pgTable(
     deletedAt: deletedAtCol(),
   },
   (t) => ({ clinicIdx: index("expenses_clinic_idx").on(t.clinicId) }),
+);
+
+// ---------------------------------------------------------------------------
+// dental_charts — tish kartasi (odontogramma), T5. Faza 2 ning birinchi qismi.
+//
+// Har saqlash = YANGI qator (versiya); qator hech qachon UPDATE qilinmaydi.
+// Joriy karta = shu bemorning eng oxirgi (created_at) o'chirilmagan qatori.
+// Shu tufayli tibbiy yozuv tarixi o'z-o'zidan saqlanadi (Tamoyil #4) va
+// "kim qachon nimani o'zgartirdi" savoliga qator darajasida javob bor.
+//
+// `payload` — `react-advanced-odontogram` kutubxonasining o'z JSON formati
+// (`getStatusChart()`), talqin qilinmaydi. `payload_version` — shu formatning
+// versiyasi (masalan "2.22"), kutubxona yangilanganda eski yozuvlarni
+// ajratib olish uchun. Qobiq tekshiruvi — `saveDentalChartSchema` (shared).
+// ---------------------------------------------------------------------------
+
+export const dentalCharts = pgTable(
+  "dental_charts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    clinicId: uuid("clinic_id").notNull().references(() => clinics.id),
+    patientId: uuid("patient_id").notNull().references(() => patients.id),
+    payload: jsonb("payload").notNull(),
+    payloadVersion: text("payload_version").notNull(),
+    createdBy: uuid("created_by").notNull().references(() => users.id),
+    createdAt: createdAtCol(),
+    /** Tamoyil #4: tibbiy yozuv o'chirilmaydi, faqat belgilanadi. */
+    deletedAt: deletedAtCol(),
+  },
+  (t) => ({
+    /** "Bemorning oxirgi kartasi" so'rovi uchun (ORDER BY created_at DESC LIMIT 1). */
+    patientLatestIdx: index("dental_charts_patient_latest_idx").on(t.clinicId, t.patientId, t.createdAt),
+  }),
 );
 
 // ---------------------------------------------------------------------------

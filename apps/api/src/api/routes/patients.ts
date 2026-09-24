@@ -15,6 +15,7 @@ import { requireRole } from "../middleware/roles";
 import { idempotency } from "../middleware/idempotency";
 import { recordAudit } from "../audit";
 import { calculatePatientBalance } from "../../domain/patientBalance";
+import { dentalChartRoutes } from "./dentalCharts";
 import type { AppVariables } from "../context";
 
 /**
@@ -26,6 +27,9 @@ import type { AppVariables } from "../context";
 export const patientRoutes = new Hono<{ Variables: AppVariables }>();
 
 patientRoutes.use("*", requireAuth);
+
+/** T5 "Tish kartasi" — `routes/dentalCharts.ts` (requireAuth shu yerdan meros). */
+patientRoutes.route("/:patientId/dental-chart", dentalChartRoutes);
 
 /** Ekran 3: "Bemor qidirish — telefon/ism bo'yicha, tez". */
 patientRoutes.get("/", zValidator("query", searchPatientsQuerySchema), async (c) => {

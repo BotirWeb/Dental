@@ -1,4 +1,4 @@
-import type { UserRole } from "@dental/shared";
+import type { ClinicFeatures, UserRole } from "@dental/shared";
 
 /**
  * Auth qilingan foydalanuvchi haqida so'rov davomida kerak bo'ladigan
@@ -14,6 +14,8 @@ export interface AuthUser {
   login: string;
   fullName: string;
   role: UserRole;
+  /** Klinikada yoqilgan modullar — `resolveClinicFeatures` bilan tozalangan (T5). */
+  features: ClinicFeatures;
 }
 
 export type AppVariables = {

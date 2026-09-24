@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { clinicFeaturesSchema } from "./features";
 
 /**
  * Login so'rovi. Qollanma bo'lim 6, ekran 1 / bo'lim 5.2 "users" (T2, tahlil
@@ -31,5 +32,7 @@ export const meResponseSchema = z.object({
   fullName: z.string(),
   role: z.enum(["owner", "admin", "doctor", "cashier"]),
   clinic: clinicInfoSchema,
+  /** Klinikada yoqilgan modullar (CLAUDE.md qoida 7) — navigatsiya/tugmalarni ko'rsatish uchun. */
+  features: clinicFeaturesSchema,
 });
 export type MeResponse = z.infer<typeof meResponseSchema>;

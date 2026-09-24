@@ -175,7 +175,12 @@ hujjat").
 tahlil C4; UNIQUE, format `^[a-z0-9-]{3,32}$`, CHECK bilan majburlangan),
 `timezone` (default `Asia/Tashkent`), `doctor_pct_basis` (enum
 `gross`|`after_material`, default `gross` — ochiq savol, 5.4 va bo'lim 13 ga
-qarang), `created_at`.
+qarang), **`features`** (jsonb, default `{}` — klinikada yoqilgan modullar,
+CLAUDE.md qoida 7 "yangi modul feature flag ortida"; masalan
+`{"odontogram": true}`. Kalit yo'q yoki aniq `true` bo'lmasa — o'chiq;
+`src/domain/clinicFeatures.ts`, `resolveClinicFeatures`. Frontendga `/auth/me`
+javobida `features` bo'lib keladi. Sozlamalar ekrani hali yo'q — real
+klinikada SQL bilan yoqiladi, T5), `created_at`.
 
 **`users`** — auth. `clinic_id`, `login` (klinika ICHIDA noyob — UNIQUE
 `(clinic_id, login) WHERE deleted_at IS NULL`, global emas: bitta shifokor
@@ -244,6 +249,23 @@ bekor qildi — FAQAT UI belgisi), `created_at`, `deleted_at`.
 
 **`expenses`** — `clinic_id`, `category`, `amount` (money), `spent_at`,
 `is_recurring`, `note`, `receipt_url`, `created_by`, `created_at`, `deleted_at`.
+
+**`dental_charts`** (TISH KARTASI — T5, Faza 2 ning birinchi qismi) —
+`clinic_id`, `patient_id`, `payload` (jsonb — `react-advanced-odontogram`
+kutubxonasining o'z formati, `{version, globals, teeth, case?, plan?}`;
+`teeth` kalitlari FDI doimiy tish raqamlari 11–48, sut tishi shu pozitsiyada
+holat sifatida saqlanadi), `payload_version` (masalan `2.22`), `created_by`,
+`created_at`, `deleted_at`. **Har saqlash — yangi qator (versiya), UPDATE
+yo'q**; joriy karta = bemorning eng oxirgi o'chirilmagan qatori, tarix
+o'z-o'zidan saqlanadi. Ikki kishi bir vaqtda saqlasa — optimistik qulf
+(`baseChartId`, bemor qatori `FOR UPDATE`, to'qnashuvda 409;
+`src/domain/dentalChart.ts`). `audit_log`ga karta tanasi emas, faqat
+metama'lumot yoziladi (qator o'zi o'zgarmas). Indeks `(clinic_id,
+patient_id, created_at)`. Qobiq tekshiruvi — `saveDentalChartSchema`
+(`packages/shared/src/dto/dentalCharts.ts`), hajm ≤ 512 KB. PRD'da avval
+rejalashtirilgan normallashtirilgan `tooth_records` (tish × holat qatorlari)
+hozircha YO'Q — kerak bo'lsa (masalan hisobot uchun) shu JSON'dan
+chiqariladi.
 
 **`audit_log`** — `clinic_id`, `user_id` (nullable — tizim amali), `entity`,
 `entity_id`, `action` (enum `create`|`update`|`delete`), `old_value` (jsonb),

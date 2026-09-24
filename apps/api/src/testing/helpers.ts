@@ -9,6 +9,7 @@ import {
   cashSessions,
   chairs,
   clinics,
+  dentalCharts,
   doctors,
   expenses,
   idempotencyKeys,
@@ -39,9 +40,13 @@ export interface TestClinic {
   name: string;
 }
 
-export async function createTestClinic(): Promise<TestClinic> {
+/** `features` — `clinics.features` jsonb (T5, CLAUDE.md qoida 7), default `{}` = hammasi o'chiq. */
+export async function createTestClinic(opts: { features?: Record<string, unknown> } = {}): Promise<TestClinic> {
   const slug = `test-${randomUUID().slice(0, 8)}`;
-  const [row] = await db.insert(clinics).values({ name: `Test klinika ${slug}`, slug }).returning();
+  const [row] = await db
+    .insert(clinics)
+    .values({ name: `Test klinika ${slug}`, slug, features: opts.features ?? {} })
+    .returning();
   return { id: row.id, slug: row.slug, name: row.name };
 }
 
@@ -174,6 +179,7 @@ export async function cleanupClinic(clinicId: string): Promise<void> {
   }
   await db.delete(idempotencyKeys).where(eq(idempotencyKeys.clinicId, clinicId));
   await db.delete(auditLog).where(eq(auditLog.clinicId, clinicId));
+  await db.delete(dentalCharts).where(eq(dentalCharts.clinicId, clinicId));
   await db.delete(performedServices).where(eq(performedServices.clinicId, clinicId));
   await db.delete(payments).where(eq(payments.clinicId, clinicId));
   await db.delete(visits).where(eq(visits.clinicId, clinicId));

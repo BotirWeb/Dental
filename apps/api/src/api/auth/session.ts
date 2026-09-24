@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../../db/client";
 import { clinics, sessions, users } from "../../db/schema";
 import { isSessionExpired, shouldRefreshActivity } from "../../domain/sessionExpiry";
+import { resolveClinicFeatures } from "../../domain/clinicFeatures";
 import type { AuthUser } from "../context";
 
 /** Absolyut chegara — T3, tahlil D2: "bitta VPS smenasi + zaxira" emas, "cookie abadiy ishlamasin". */
@@ -44,6 +45,7 @@ export async function getUserBySessionToken(token: string): Promise<AuthUser | n
       clinicId: users.clinicId,
       clinicSlug: clinics.slug,
       clinicName: clinics.name,
+      clinicFeatures: clinics.features,
       login: users.login,
       fullName: users.fullName,
       role: users.role,
@@ -77,6 +79,7 @@ export async function getUserBySessionToken(token: string): Promise<AuthUser | n
     login: row.login,
     fullName: row.fullName,
     role: row.role,
+    features: resolveClinicFeatures(row.clinicFeatures),
   };
 }
 

@@ -10,6 +10,7 @@ import { createSession, deleteSession } from "../auth/session";
 import { requireAuth, SESSION_COOKIE_NAME } from "../middleware/auth";
 import { clientIp, rateLimit } from "../middleware/rateLimit";
 import { ClinicResolutionError, resolveClinicSlug } from "../../domain/auth";
+import { resolveClinicFeatures } from "../../domain/clinicFeatures";
 import type { AppVariables } from "../context";
 import type { MeResponse } from "@dental/shared";
 
@@ -125,6 +126,7 @@ authRoutes.post("/login", loginRateLimit, zValidator("json", loginRequestSchema)
     fullName: candidate.fullName,
     role: candidate.role,
     clinic: { slug: clinicRow.slug, name: clinicRow.name },
+    features: resolveClinicFeatures(clinicRow.features),
   };
 
   return c.json(response);
@@ -149,6 +151,7 @@ authRoutes.get("/me", requireAuth, async (c) => {
     fullName: user.fullName,
     role: user.role,
     clinic: { slug: user.clinicSlug, name: user.clinicName },
+    features: user.features,
   };
   return c.json(response);
 });

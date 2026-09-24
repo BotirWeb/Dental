@@ -16,3 +16,5 @@ export * from "./dto/expenses";
 export * from "./dto/serviceCategories";
 export * from "./dto/reports";
 export * from "./dto/users";
+export * from "./dto/features";
+export * from "./dto/dentalCharts";

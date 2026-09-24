@@ -11,7 +11,14 @@ import { toMoneyInput, toPercentInput } from "./columns";
 async function main() {
   const [clinic] = await db
     .insert(clinics)
-    .values({ name: "Namuna Klinika", slug: "namuna-klinika", timezone: "Asia/Tashkent" })
+    .values({
+      name: "Namuna Klinika",
+      slug: "namuna-klinika",
+      timezone: "Asia/Tashkent",
+      // Dev'da yangi modullar ko'rinsin. Real klinikada default o'chiq —
+      // yoqish hozircha SQL bilan (T5, `docs/tasks/2026-09-24-odontogram.md`).
+      features: { odontogram: true },
+    })
     .returning();
 
   const credentials = [
