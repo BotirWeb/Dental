@@ -10,6 +10,16 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
+      workbox: {
+        // T5: tish kartasi kutubxonasi (`DentalChartEditor-*.js`, ~2.6 MB)
+        // precache'ga KIRMAYDI — aks holda service worker uni har
+        // foydalanuvchiga (kassirga ham) o'rnatishda yuklab olardi, workbox
+        // esa 2 MiB dan katta faylda build'ni to'xtatadi. U faqat karta
+        // sahifasi ochilganda tarmoqdan olinadi (keyin brauzer HTTP keshida);
+        // karta baribir serverga bog'liq (saqlash /api orqali), oflayn
+        // ishlash talab qilinmaydi. Default ro'yxat (node_modules) saqlanadi.
+        globIgnores: ["**/node_modules/**/*", "**/DentalChartEditor-*.js"],
+      },
       manifest: {
         name: "Dental — klinika boshqaruvi",
         short_name: "Dental",

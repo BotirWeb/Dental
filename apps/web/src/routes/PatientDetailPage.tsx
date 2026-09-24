@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import type { AppointmentWithPatient, Patient } from "@dental/shared";
 import { api, ApiError } from "../lib/api";
 import { formatDate, formatDateTime } from "../lib/time";
+import { useAuth } from "../state/AuthContext";
 
 const APPOINTMENT_STATUS_LABELS: Record<string, string> = {
   planned: "Rejalashtirilgan",
@@ -18,6 +19,7 @@ const APPOINTMENT_STATUS_LABELS: Record<string, string> = {
  * bog'liq). To'lovlar va qarz — ekran 6 "Kassa" ishi (hali qurilmagan). */
 export function PatientDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const [patient, setPatient] = useState<Patient | null>(null);
   const [appointments, setAppointments] = useState<AppointmentWithPatient[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +52,17 @@ export function PatientDetailPage() {
 
       {patient && (
         <div className="rounded-lg border border-slate-200 bg-white p-6">
-          <h1 className="text-xl font-semibold text-slate-900">{patient.fullName}</h1>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <h1 className="text-xl font-semibold text-slate-900">{patient.fullName}</h1>
+            {user?.features.odontogram && (
+              <Link
+                to={`/patients/${patient.id}/chart`}
+                className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
+              >
+                Tish kartasi
+              </Link>
+            )}
+          </div>
           <dl className="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
             <div>
               <dt className="text-slate-400">Telefon</dt>

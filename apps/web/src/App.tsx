@@ -10,6 +10,7 @@ import { LoginPage } from "./routes/LoginPage";
 import { DashboardPage } from "./routes/DashboardPage";
 import { PatientsPage } from "./routes/PatientsPage";
 import { PatientDetailPage } from "./routes/PatientDetailPage";
+import { DentalChartPage } from "./routes/DentalChartPage";
 import { SchedulePage } from "./routes/SchedulePage";
 import { CashierPage } from "./routes/CashierPage";
 import { ExpensesPage } from "./routes/ExpensesPage";
@@ -47,6 +48,8 @@ export default function App() {
                 <Route element={<RequireRole roles={["owner", "admin", "doctor"]} />}>
                   <Route path="patients" element={<PatientsPage />} />
                   <Route path="patients/:id" element={<PatientDetailPage />} />
+                  {/* T5 — ichida feature flag tekshiruvi; kassir bu yerga kirmaydi (DENTAL_CHART_VIEW_ROLES). */}
+                  <Route path="patients/:id/chart" element={<DentalChartPage />} />
                   <Route path="schedule" element={<SchedulePage />} />
                 </Route>
 
