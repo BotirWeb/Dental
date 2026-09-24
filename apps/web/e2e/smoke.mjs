@@ -78,7 +78,7 @@ try {
   await page.locator("form").locator("input").first().fill("Oflayn Test Bemor");
 
   await page.context().setOffline(true);
-  await page.waitForSelector('text=Internet yo'q', { timeout: 5000 });
+  await page.waitForSelector("text=Internet yo'q", { timeout: 5000 });
   log("Oflaynda banner chiqdi", true);
   const submitDisabledOffline = await page.locator('form button[type="submit"]').isDisabled();
   log("Oflaynda saqlash tugmasi o'chirilgan", submitDisabledOffline);
@@ -86,7 +86,7 @@ try {
   log("Oflaynda forma ma'lumoti saqlanib qoldi", phoneStillThere === offlinePhone);
 
   await page.context().setOffline(false);
-  await page.waitForSelector('text=Internet yo'q', { state: "hidden", timeout: 10000 });
+  await page.waitForSelector("text=Internet yo'q", { state: "hidden", timeout: 10000 });
   log("Ulanish tiklangach banner yo'qoldi", true);
   await page.click('button:has-text("Bekor qilish")');
 
