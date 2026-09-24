@@ -380,6 +380,7 @@ route'lar SHU BITTA ro'yxatdan generatsiya bo'ladi.
 | 3 | Bemorlar (qidirish) | `/patients` | owner, admin, doctor | ✅ tayyor (namuna slice — qidirish + yaratish) |
 | 4 | Bemor kartasi | `/patients/:id` | owner, admin, doctor | 🟡 asosiy ma'lumot + yozuvlar tarixi (2026-09-22). To'lov/qarz — ekran 6 bilan birga |
 | 5 | Yozuv modal | (2-ekran ichida) | owner, admin | ✅ tayyor (2026-09-22) — mavjud bemor qidiriladi, yangi bemor bu yerda yaratilmaydi |
+| 4a | Tish kartasi | `/patients/:id/chart` (4-ekrandan tugma) | owner, doctor (tahrir); admin (faqat ko'rish) | ✅ tayyor (2026-09-24, T5) — `features.odontogram` flag ortida; faqat holat kartasi, karta ichi hozircha rus tilida (bo'lim 13) |
 | 6 | Kassa / vizit yakuni | `/cashier` | owner, admin, cashier | ✅ tayyor (2026-09-22) — smena, vizit, xizmat, to'lov, bekor qilish |
 | 7 | Xarajatlar | `/expenses` | owner, admin | ✅ tayyor (2026-09-22) — ro'yxat + qo'shish |
 | 8 | Kunlik hisobot | `/reports/daily` | owner | ✅ tayyor (2026-09-22) |
@@ -390,8 +391,8 @@ route'lar SHU BITTA ro'yxatdan generatsiya bo'ladi.
 
 **Barcha 12 ekran ✅ tayyor (2026-09-22).** `docs/tasks/2026-09-22-tuzatishlar.md`
 yaratilgan kunda bu holat "12 ekrandan 2 tasi" edi — Faza 1 shundan buyon
-to'liq bajarildi. Qolgan: Faza 2 (`treatment_plans`/`tooth_records`) va
-Faza 3 (bot/eslatma/telefoniya) — bo'lim 7.
+to'liq bajarildi. Faza 2 dan tish kartasi (4a, T5) qo'shildi. Qolgan: Faza 2
+`treatment_plans` va Faza 3 (bot/eslatma/telefoniya) — bo'lim 7.
 
 ---
 
@@ -408,7 +409,8 @@ mutlaq taqvim emas.
 | Faza 1 | Xarajatlar (7) + Xizmat va narxlar (11) | 7–8 | |
 | Faza 1 | Hisobotlar: Kunlik, Oylik marja, Shifokor (8, 9, 10) | 9–11 | |
 | Faza 1 | Foydalanuvchilar (12) + T2/T3/T4 tuzatishlar | — | `docs/tasks/2026-09-22-tuzatishlar.md` |
-| Faza 2 | `treatment_plans`, `tooth_records` — davolash rejasi/tish kartasi | — | hali loyihalanmagan |
+| Faza 2 | Tish kartasi — `dental_charts` (T5) | — | ✅ bajarilgan (2026-09-24, `docs/tasks/2026-09-24-odontogram.md`) |
+| Faza 2 | `treatment_plans` — davolash rejasi (kutubxonaning "reja" rejimi shu bilan ochiladi) | — | hali loyihalanmagan |
 | Faza 3 | Bot, eslatma (SMS/Telegram), telefoniya adapter concrete implementatsiya, `calls`/`messages` jadvali, cron (`src/jobs/`) | — | `adapters/telephony.ts` interfeysi tayyor, implementatsiya yo'q |
 | Faza 4 | Ko'p klinika — subdomen orqali klinika aniqlash, owner uchun 2FA (TOTP) | — | T2/T3 hozircha klinika kodi + login bilan yechadi (bo'lim 13) |
 
@@ -431,6 +433,10 @@ holda **40–60% bajariladi** — rejalashtirishda shu koeffitsientni hisobga ol
 - Service worker `/api/*` javoblarini keshlamaydi — bemor ma'lumoti umumiy
   kompyuterda qolmasin (PWA sozlamasi T4 da tekshiriladi).
 - `audit_log` ni faqat owner ko'radi (T3 bilan majburlanadi).
+- Tish kartasi (T5): kutubxonaning PNG/PDF/JSON/FHIR eksport-import paneli
+  ATAYLAB chiqarilmagan — bemor kartasi kompyuterda fayl bo'lib qolmasin; karta
+  faqat serverga saqlanadi. Kutubxona tashqi tarmoqqa so'rov yubormaydi,
+  localStorage'ga yozmaydi (ixtiyoriy persistence yoqilmagan).
 
 ---
 
@@ -530,7 +536,9 @@ yozishning oldini olish.
    ilova qobig'i (HTML/JS/CSS/manifest/ikonlar) `precacheAndRoute` orqali
    keshlanadi, `/api/*` uchun hech qanday `registerRoute`/runtime-caching
    YO'Q — talab allaqachon bajarilgan edi (`vite-plugin-pwa` default
-   `generateSW` strategiyasi), o'zgartirish kerak bo'lmadi.
+   `generateSW` strategiyasi), o'zgartirish kerak bo'lmadi. T5 (2026-09-24): tish
+   kartasi chunk'i (`DentalChartEditor-*.js`, ~2.6 MB) precache'dan chiqarilgan
+   (`vite.config.ts` `globIgnores`) — faqat karta sahifasida tarmoqdan yuklanadi.
 
 **Web forma naqshi** (`PatientsPage.tsx`ni takrorlang): kalit forma
 ochilganda (`crypto.randomUUID()`) yaratiladi, qayta urinishda O'SHA kalit
@@ -587,6 +595,7 @@ Maxfiylik cheklovi — bo'lim 8 (tashqi LLM'ga bemor ma'lumoti yuborilmaydi).
 | To'liq oflayn rejim yo'q | O'rta | T4 birinchi qism (idempotentlik, ✅ 2026-09-22) hozir; to'liq outbox (IndexedDB navbat) — 6-ekran real ishlagandan keyin loyihalanadi |
 | Docker/Compose sinalmagan | O'rta | VPS'ga birinchi chiqishda qo'lda tekshiriladi (bo'lim 3.4) |
 | Shifokor foizi asosi va kafolat komissiyasi — hali faraz | O'rta | Bo'lim 13, dala ishida tasdiqlanadi |
+| Tish kartasi tashqi kutubxonaga bog'liq (`react-advanced-odontogram`, 2026-08 da chiqqan, bitta muallif) | O'rta | ✅ T5: MIT, `vendor/` da tarball (npm'dan o'chsa ham ishlaydi), versiya qotirilgan; loyiha to'xtasa — fork qilish huquqi bor. Yangilash tartibi — `vendor/README.md` |
 
 ---
 
@@ -612,6 +621,8 @@ Kod bilan hal qilib bo'lmaydigan, klinikaga borib aniqlanadigan ishlar:
 | 3 | Chegirma so'mda yoki foizda? | ✅ Hal qilindi | Ikkalasi ham qo'llab-quvvatlanadi — `discount_type` (bo'lim 5.3). |
 | 4 | Login qanday tuzilishi kerak (bir nechta klinika, bir xodim ikki klinikada)? | ✅ Amalga oshirildi (T2, 2026-09-22) | Klinika kodi + login; login klinika ichida unique (`clinics.slug`, `users.login` — 5.2 "clinics"/"users"). Sabab: bitta shifokor ikki klinikada ishlashi mumkin, har klinikada `admin` bo'lishi kerak, xodimlarning ko'pida email yo'q. |
 | 5 | Sessiya muddati? | ✅ Amalga oshirildi (T3, 2026-09-22) | Idle 12 soat (`SESSION_IDLE_HOURS`), absolyut 7 kun (`SESSION_MAX_DAYS`), env orqali — 9.1-bo'lim. |
+| 6 | Tish kartasi o'zbek tilida qachon? | Ochiq (T5) | Kutubxonada o'zbek tili yo'q — hozircha rus tili (foydalanuvchi qarori, 2026-09-24). Yo'l: kutubxonaga `uz` tarjima PR (≈1015 atama, stomatolog ko'rib chiqadi). |
+| 7 | Tish kartasini kim to'ldiradi? | Kelishildi, dala ishida tasdiqlanadi (T5) | Tahrir — shifokor va ega, admin faqat ko'radi, kassir kirmaydi (`DENTAL_CHART_*_ROLES`, shared). Ba'zi klinikada assistent kiritishi mumkin. |
 
 ---
 
@@ -644,3 +655,4 @@ bo'lmasin (bo'lim 15 formatiga mos).
   2. **Validatsiya xatosi `[object Object]` ko'rinardi** — `@hono/zod-validator`ning standart xato javobi `{error: ZodError}` (obyekt, matn emas) edi, loyihaning qolgan qismi esa `{error: "matn"}` shartnomasiga amal qiladi. Yangi `src/api/validate.ts` (`zValidate`) — birinchi Zod xatosini matn qilib qaytaradi, BARCHA 11 route faylida `zValidator` o'rniga shu ishlatiladi endi.
 
   Real Postgres+server+brauzerga qarshi to'liq tekshirildi (`users.integration.test.ts`, 11 test — sessiya o'chishi haqiqiy DB qatoridan tasdiqlandi; Playwright: yaratish, zaif parol rad etilishi, faolsizlantirish, o'z-o'zini bloklay olmaslik). Jami integratsiya 52/52. 102/102 unit test (o'zgarishsiz). |
+| 2026-09-24 | **T5 — Tish kartasi** (Faza 2 ning birinchi qismi, `docs/tasks/2026-09-24-odontogram.md`). `react-advanced-odontogram` 2.5.0 (MIT) `vendor/` tarball sifatida; `clinics.features` — birinchi feature flag; `dental_charts` (har saqlash yangi versiya, optimistik qulf → 409); `GET/POST /api/patients/:patientId/dental-chart`; ekran 4a `/patients/:id/chart` (lazy chunk, CSS izolyatsiyasi, karta ichi rus tilida). Unit 135/135 (+33), integratsiya 68/68 (+16), brauzer 33 tekshiruv (dev va prod). Yo'l-yo'lakay: `e2e/smoke.mjs` sintaksis xatosi tuzatildi. |

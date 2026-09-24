@@ -1,8 +1,8 @@
 # Dental — klinika boshqaruv tizimi
 
 Stomatologiya klinikalari uchun web tizim. **Faza 1 (MVP) — barcha 12
-ekran bajarilgan** (qollanma bo'lim 7). Faza 2 (`treatment_plans`/
-`tooth_records`) va Faza 3 (bot, eslatma, telefoniya) hali yo'q.
+ekran bajarilgan** (qollanma bo'lim 7). Faza 2 dan **tish kartasi** bor (T5);
+`treatment_plans` va Faza 3 (bot, eslatma, telefoniya) hali yo'q.
 
 > **Muhim:** loyihaning to'liq spetsifikatsiyasi — biznes konteksti, rad
 > etilgan qarorlar, ma'lumotlar modeli, ochiq savollar — `docs/prd-v1.md`
@@ -26,6 +26,10 @@ ekran bajarilgan** (qollanma bo'lim 7). Faza 2 (`treatment_plans`/
   darajasida sozlanadigan (bo'lim 13 ochiq savoli).
 - **Tarmoq uzilishiga chidamlilik**: idempotentlik middleware (pul/vizit
   yaratuvchi endpoint'larda), oflayn holat indikatori.
+- **Tish kartasi (T5)** — bemor kartasidan `/patients/:id/chart`: FDI
+  odontogramma, har saqlash yangi versiya, bir vaqtda tahrirlashda 409.
+  Klinikada `clinics.features.odontogram` yoqilgan bo'lishi kerak (seed'da
+  yoqilgan). Kutubxona — `vendor/` (quyida).
 - **Frontend** — React Router SPA: sahifalar orasida o'tishda **hech qachon
   to'liq refresh bo'lmaydi**. `apps/web/e2e/smoke.mjs` shuni tekshiradi.
 
@@ -43,7 +47,9 @@ apps/web/          React + TypeScript + Vite + Tailwind + PWA
   src/state/       AuthContext
   src/lib/         API klient, vaqt formatlash
   e2e/smoke.mjs    ixtiyoriy Playwright smoke-test
+  e2e/dental-chart.mjs  tish kartasi Playwright tekshiruvi (T5)
 packages/shared/   ikkala tomon ishlatadigan zod sxema/enum/tip'lar
+vendor/            repo ichida saqlanadigan tashqi paketlar (odontogramma, MIT)
 docker-compose.yml + Dockerfile'lar + Caddyfile   (VPS deploy uchun, SINALMAGAN)
 ```
 
@@ -141,6 +147,13 @@ node apps/web/e2e/smoke.mjs
   `dist/` build kerak bo'lsa (masalan image hajmini kichraytirish uchun),
   shu yerga qaytib, `NodeNext` + `.js` kengaytmalarga o'tish variant.
 
+- **Tish kartasi kutubxonasi `vendor/` da** (`react-advanced-odontogram`
+  2.5.0, MIT © 2026 Zoltán Dul — https://github.com/ZoliQua/React-Advanced-Odontogram).
+  npm'dan emas, repo ichidagi tarball'dan o'rnatiladi: paket yosh va bitta
+  muallifniki, npm'dan o'chirilsa ham install/deploy buzilmasin. U ~2.6 MB —
+  faqat karta sahifasida lazy yuklanadi, PWA precache'ga kirmaydi.
+  Yangilash tartibi — `vendor/README.md`.
+
 ## Keyingi qadam
 
 Faza 1 (MVP, 12 ekran) bajarilgan. Qaror foydalanuvchida (qollanma bo'lim 15):
@@ -148,8 +161,9 @@ Faza 1 (MVP, 12 ekran) bajarilgan. Qaror foydalanuvchida (qollanma bo'lim 15):
 1. **Qollanma bo'lim 12** — "Birinchi hafta" dala ishi (klinikaga borish,
    telefoniya provayderini aniqlash, real domen, "pilot" holatini
    aniqlashtirish).
-2. **Faza 2** — `treatment_plans`/`tooth_records` (davolash rejasi, tish
-   kartasi) — hali loyihalanmagan.
+2. **Faza 2** — tish kartasi bajarilgan (T5); `treatment_plans` (davolash
+   rejasi) hali loyihalanmagan. Tish kartasi ochiq ishlari —
+   `docs/tasks/2026-09-24-odontogram.md` "Qilinmagan / keyingi".
 3. **Faza 3** — bot, eslatma (SMS/Telegram), telefoniya adapter, `calls`/
    `messages` — `apps/api/src/adapters/telephony.ts` interfeysi tayyor,
    implementatsiya yo'q.

@@ -22,6 +22,7 @@ Barchasi repo ildizidan, pnpm workspace orqali (`pnpm -r` = har uch paket):
 - Seed (dastlabki ma'lumot): `pnpm db:seed`
 - Dev server: `pnpm dev:api` (port 3000) va `pnpm dev:web` (Vite, `/api` ni 3000 ga proksi qiladi) — ikkalasi alohida terminalda parallel
 - E2E smoke: `node apps/web/e2e/smoke.mjs` (ishlab turgan api+web talab qiladi — alohida skript nomi `package.json` da yo'q)
+- E2E tish kartasi (T5): `node apps/web/e2e/dental-chart.mjs` (xuddi shunday; 6 marta login qiladi — ketma-ket ko'p yurishda login rate-limit sabab api'ni qayta ishga tushiring)
 - Web lint: `pnpm --filter @dental/web lint` (oxlint)
 - Build: `pnpm -r build`
 
