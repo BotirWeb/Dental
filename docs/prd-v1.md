@@ -127,7 +127,9 @@ sifatida keladi (float xatosidan qochish uchun) — `src/db/columns.ts`dagi
 `toMoneyInput`/`fromMoney` orqali DB chegarasida `number`ga aylantiriladi; domain
 qatlami (`src/domain`) har doim oddiy `number` bilan ishlaydi. Vaqt — `timestamptz`,
 DB'da har doim UTC, frontendda ko'rsatishda BITTA joyda (`apps/web/src/lib/time.ts`)
-`Asia/Tashkent`ga o'giriladi.
+`Asia/Tashkent`ga o'giriladi. Ko'rinish formati: `24.09.2026`, `24.09.2026 14:30`,
+`14:30` — `Intl` ning `uz-UZ` uslubi ishlatilmaydi (Chrome'da o'zbek tili ICU
+ma'lumoti yo'q, "2026 M09 24" chiqadi), satr qo'lda yig'iladi.
 
 ---
 
@@ -656,3 +658,4 @@ bo'lmasin (bo'lim 15 formatiga mos).
 
   Real Postgres+server+brauzerga qarshi to'liq tekshirildi (`users.integration.test.ts`, 11 test — sessiya o'chishi haqiqiy DB qatoridan tasdiqlandi; Playwright: yaratish, zaif parol rad etilishi, faolsizlantirish, o'z-o'zini bloklay olmaslik). Jami integratsiya 52/52. 102/102 unit test (o'zgarishsiz). |
 | 2026-09-24 | **T5 — Tish kartasi** (Faza 2 ning birinchi qismi, `docs/tasks/2026-09-24-odontogram.md`). `react-advanced-odontogram` 2.5.0 (MIT) `vendor/` tarball sifatida; `clinics.features` — birinchi feature flag; `dental_charts` (har saqlash yangi versiya, optimistik qulf → 409); `GET/POST /api/patients/:patientId/dental-chart`; ekran 4a `/patients/:id/chart` (lazy chunk, CSS izolyatsiyasi, karta ichi rus tilida). Unit 135/135 (+33), integratsiya 68/68 (+16), brauzer 33 tekshiruv (dev va prod). Yo'l-yo'lakay: `e2e/smoke.mjs` sintaksis xatosi tuzatildi. |
+| 2026-09-25 | Sana formati tuzatildi (foydalanuvchi so'rovi): Chrome'da `Intl.DateTimeFormat("uz-UZ")` o'zbek ICU ma'lumotisiz "2026 M09 24" chiqarardi (Node'da "24-sen, 2026" — bir kod, ikki natija). `apps/web/src/lib/time.ts` endi Intl'ni faqat Toshkent vaqt zonasi raqamlari uchun ishlatadi, satr qo'lda yig'iladi: `24.09.2026`, `24.09.2026 14:30`, `14:30`. Barcha ekranlar shu bitta fayldan oladi. Chromium'da (Playwright) bemorlar, bemor kartasi, tish kartasi, jadval tekshirildi. Topildi, lekin tegilmadi: pul `toLocaleString("uz-UZ")` Chrome'da "1,250,000" chiqaradi (xuddi shu sabab). |
